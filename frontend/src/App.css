@@ -94,3 +94,38 @@
   height: auto;
   border-radius: 20px;
 }
+
+.historyButton {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    padding: 5px 15px;
+    border-radius: 8px;
+}
+
+.historyButton:hover {
+    background-color: #f0f0f0;
+    transform: translateY(-2px);
+}
+
+.historyButton p {
+    margin: 0;
+    font-weight: 500;
+    color: #333;
+}
+
+.logoutButton {
+    margin-left: 20px !important;
+    background-color: #ff4d4d !important;
+    color: white !important;
+    font-weight: bold !important;
+    transition: all 0.3s ease !important;
+}
+
+.logoutButton:hover {
+    background-color: #cc0000 !important;
+    transform: scale(1.05);
+}

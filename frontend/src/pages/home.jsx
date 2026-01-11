@@ -13,7 +13,7 @@ function HomeComponent() {
     const [meetingCode, setMeetingCode] = useState("");
 
 
-    const {addToUserHistory} = useContext(AuthContext);
+    const { addToUserHistory } = useContext(AuthContext);
     let handleJoinVideoCall = async () => {
         await addToUserHistory(meetingCode)
         navigate(`/${meetingCode}`)
@@ -26,23 +26,21 @@ function HomeComponent() {
 
                 <div style={{ display: "flex", alignItems: "center" }}>
 
-                    <h2>Apna Video Call</h2>
+                    <h2>Zoom Video Call</h2>
                 </div>
 
                 <div style={{ display: "flex", alignItems: "center" }}>
-                    <IconButton onClick={
-                        () => {
-                            navigate("/history")
-                        }
-                    }>
-                        <RestoreIcon />
-                    </IconButton>
-                    <p>History</p>
+                    <div className="historyButton" onClick={() => navigate("/history")}>
+                        <IconButton>
+                            <RestoreIcon />
+                        </IconButton>
+                        <p>History</p>
+                    </div>
 
                     <Button onClick={() => {
                         localStorage.removeItem("token")
                         navigate("/auth")
-                    }}>
+                    }} className="logoutButton">
                         Logout
                     </Button>
                 </div>
