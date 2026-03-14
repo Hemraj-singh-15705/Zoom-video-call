@@ -20,7 +20,7 @@ export const connectToSocket = (server) => {
 
         console.log("SOMETHING CONNECTED")
 
-        socket.on("join-call", (path) => {
+        socket.on("join-call", (path, username) => {
 
             if (connections[path] === undefined) {
                 connections[path] = []
@@ -29,12 +29,15 @@ export const connectToSocket = (server) => {
 
             timeOnline[socket.id] = new Date();
 
-            // connections[path].forEach(elem => {
-            //     io.to(elem)
-            // })
+            // Store username and initial focus count
+            socket.username = username;
 
             for (let a = 0; a < connections[path].length; a++) {
-                io.to(connections[path][a]).emit("user-joined", socket.id, connections[path])
+                const participants = connections[path].map(id => {
+                    const s = io.sockets.sockets.get(id);
+                    return { id, username: s ? s.username : "Unknown" };
+                });
+                io.to(connections[path][a]).emit("user-joined", socket.id, participants);
             }
 
             if (messages[path] !== undefined) {
@@ -77,6 +80,26 @@ export const connectToSocket = (server) => {
                 })
             }
 
+        })
+
+        socket.on("focus-changed", (focusData) => {
+            const [matchingRoom, found] = Object.entries(connections)
+                .reduce(([room, isFound], [roomKey, roomValue]) => {
+                    if (!isFound && roomValue.includes(socket.id)) {
+                        return [roomKey, true];
+                    }
+                    return [room, isFound];
+                }, ['', false]);
+
+            if (found === true) {
+                connections[matchingRoom].forEach((elem) => {
+                    io.to(elem).emit("focus-changed", {
+                        socketId: socket.id,
+                        username: focusData.username,
+                        focusLossCount: focusData.focusLossCount
+                    });
+                });
+            }
         })
 
         socket.on("disconnect", () => {

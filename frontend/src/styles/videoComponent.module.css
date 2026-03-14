@@ -37,37 +37,130 @@
     border-radius: 10px;
 }
 
-.chatRoom {
+.sidePanelContainer {
     position: absolute;
-    height: 90vh;
     right: 0;
-    background: white;
-    border-radius: 10px;
-    width: 30vw;
-    padding-inline: 20px;
+    top: 0;
+    height: 100vh;
+    display: flex;
+    flex-direction: row-reverse;
+    /* Panels appear from right to left */
+    gap: 15px;
+    z-index: 1000;
+    pointer-events: none;
+    /* Let clicks through when panels are closed */
+}
+
+.chatRoom,
+.dashboardPanel {
+    pointer-events: auto;
+    /* Enable clicks on the panels themselves */
+    height: 100vh;
+    background: #1a1c1e;
+    width: 320px;
+    padding: 24px;
+    box-shadow: -4px 0 20px rgba(0, 0, 0, 0.5);
+    display: flex;
+    flex-direction: column;
+    border-left: 1px solid rgba(255, 255, 255, 0.1);
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+    }
+
+    to {
+        transform: translateX(0);
+    }
+}
+
+.chatRoom {
+    border-radius: 16px 0 0 16px;
+}
+
+.dashboardPanel {
+    border-radius: 16px;
+}
+
+.statusSection {
+    margin-bottom: 20px;
+    padding: 15px;
+    background: rgba(255, 0, 0, 0.1);
+    border: 1px solid rgba(255, 0, 0, 0.3);
+    border-radius: 8px;
+    flex-shrink: 0;
+    /* Don't shrink the status section */
+}
+
+.statusHeader {
+    color: #ffffff;
+    /* White */
+    font-weight: bold;
+    font-size: 1.2rem;
+    margin: 0 0 10px 0;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.statusText {
+    color: #ffffff;
+    /* White */
+    font-size: 0.9rem;
+    margin: 5px 0;
+    display: flex;
+    justify-content: space-between;
+}
+
+.statusText span:first-child {
+    color: #ffffff;
+}
+
+.statusText span:last-child {
+    color: #ffffff;
+    /* White for counts */
+    font-weight: 600;
 }
 
 .chatContainer {
     position: relative;
-    height: 100%;
+    flex: 1;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
+    height: calc(100% - 120px);
+    /* Account for status section */
 }
 
 .chattingDisplay {
     flex: 1;
     overflow-y: auto;
-    margin-bottom: 70px;
-    /* Space for the input area */
-    padding-bottom: 10px;
+    margin-top: 10px;
+    padding-bottom: 20px;
+    color: white;
 }
 
 .chattingArea {
-    position: absolute;
-    bottom: 10px;
-    width: 100%;
-    background: white;
-    padding-top: 10px;
+    background: transparent;
+    padding: 15px 0 0 0;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.dashboardContent {
+    flex: 1;
+    overflow-y: auto;
+    margin-top: 20px;
+    color: white;
+}
+
+.dashboardDivider {
+    border: 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    margin: 16px 0;
 }
 
 /* Lobby Styles */
@@ -116,4 +209,79 @@
     display: flex;
     flex-direction: column;
     gap: 15px;
+}
+
+.screenshotBlur {
+    filter: blur(50px) !important;
+    pointer-events: none;
+    transition: filter 0.3s ease;
+}
+
+.blurWrapper {
+    width: 100%;
+    height: 100%;
+    position: relative;
+}
+
+.screenshotOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(10px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    cursor: pointer;
+    animation: fadeIn 0.3s ease;
+}
+
+.overlayContent {
+    background: #1a1c1e;
+    padding: 2.5rem 3.5rem;
+    border-radius: 28px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.7);
+    text-align: center;
+    max-width: 500px;
+    transform: scale(1);
+    animation: overlayScale 0.3s ease-out;
+}
+
+.overlayContent h2 {
+    color: white;
+    font-size: 1.6rem;
+    margin: 0 0 12px 0;
+    font-weight: 700;
+}
+
+.overlayContent p {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 1rem;
+    margin: 0;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes overlayScale {
+    from {
+        transform: scale(0.9);
+        opacity: 0;
+    }
+
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
 }

@@ -23,7 +23,7 @@ const defaultTheme = createTheme();
 
 export default function Authentication() {
 
-    
+
 
     const [username, setUsername] = React.useState();
     const [password, setPassword] = React.useState();
@@ -58,9 +58,8 @@ export default function Authentication() {
                 setPassword("")
             }
         } catch (err) {
-
             console.log(err);
-            let message = (err.response.data.message);
+            let message = (err.response && err.response.data && err.response.data.message) || "Something went wrong. Is the server running?";
             setError(message);
         }
     }
@@ -77,7 +76,7 @@ export default function Authentication() {
                     md={7}
                     sx={{
                         // backgroundImage: 'url(https://source.unsplash.com/random?wallpapers)',
-                       
+
                         backgroundImage: 'url(https://picsum.photos/1920/1080?random)',
                         backgroundRepeat: 'no-repeat',
                         backgroundColor: (t) =>

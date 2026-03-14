@@ -26,7 +26,7 @@ function HomeComponent() {
 
                 <div style={{ display: "flex", alignItems: "center" }}>
 
-                    <h2>Zoom Video Call</h2>
+                    <h2>LinkUp Video Call</h2>
                 </div>
 
                 <div style={{ display: "flex", alignItems: "center" }}>
@@ -36,6 +36,18 @@ function HomeComponent() {
                         </IconButton>
                         <p>History</p>
                     </div>
+
+                    <Button variant="contained" onClick={() => {
+                        window.location.href = "/simon-game/index.html"
+                    }} style={{ marginLeft: "10px" }}>
+                        SIMON SAYS
+                    </Button>
+
+                    <Button variant="contained" onClick={() => {
+                        window.location.href = "http://localhost:3001"
+                    }} style={{ marginLeft: "10px" }}>
+                        E-LinkUp
+                    </Button>
 
                     <Button onClick={() => {
                         localStorage.removeItem("token")
