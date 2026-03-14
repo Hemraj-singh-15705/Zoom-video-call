@@ -253,6 +253,12 @@ export default function VideoMeetComponent() {
         if (fromId !== socketIdRef.current) {
             if (signal.sdp) {
                 connectionsRef.current[fromId].setRemoteDescription(new RTCSessionDescription(signal.sdp)).then(() => {
+                    if (connectionsRef.current[fromId].iceQueue) {
+                        connectionsRef.current[fromId].iceQueue.forEach(ice => {
+                            connectionsRef.current[fromId].addIceCandidate(ice).catch(e => console.log(e));
+                        });
+                        connectionsRef.current[fromId].iceQueue = [];
+                    }
                     if (signal.sdp.type === 'offer') {
                         connectionsRef.current[fromId].createAnswer().then((description) => {
                             connectionsRef.current[fromId].setLocalDescription(description).then(() => {
@@ -264,7 +270,12 @@ export default function VideoMeetComponent() {
             }
 
             if (signal.ice) {
-                connectionsRef.current[fromId].addIceCandidate(new RTCIceCandidate(signal.ice)).catch(e => console.log(e))
+                if (connectionsRef.current[fromId].remoteDescription) {
+                    connectionsRef.current[fromId].addIceCandidate(new RTCIceCandidate(signal.ice)).catch(e => console.log(e))
+                } else {
+                    if (!connectionsRef.current[fromId].iceQueue) connectionsRef.current[fromId].iceQueue = [];
+                    connectionsRef.current[fromId].iceQueue.push(new RTCIceCandidate(signal.ice));
+                }
             }
         }
     }
@@ -331,9 +342,11 @@ export default function VideoMeetComponent() {
                     }
 
                     // Wait for their video stream
-                    connectionsRef.current[socketListId].onaddstream = (event) => {
+                    connectionsRef.current[socketListId].ontrack = (event) => {
                         console.log("BEFORE:", videoRef.current);
                         console.log("FINDING ID: ", socketListId);
+
+                        let stream = event.streams[0];
 
                         let videoExists = videoRef.current.find(video => video.socketId === socketListId);
 
@@ -343,7 +356,7 @@ export default function VideoMeetComponent() {
                             // Update the stream of the existing video
                             setVideos(videos => {
                                 const updatedVideos = videos.map(video =>
-                                    video.socketId === socketListId ? { ...video, stream: event.stream } : video
+                                    video.socketId === socketListId ? { ...video, stream: stream } : video
                                 );
                                 videoRef.current = updatedVideos;
                                 return updatedVideos;
@@ -353,7 +366,7 @@ export default function VideoMeetComponent() {
                             console.log("CREATING NEW");
                             let newVideo = {
                                 socketId: socketListId,
-                                stream: event.stream,
+                                stream: stream,
                                 autoplay: true,
                                 playsinline: true
                             };
@@ -544,7 +557,7 @@ export default function VideoMeetComponent() {
                     <div className={styles.lobbyBox}>
                         <h2>Join Meeting</h2>
 
-                        <video ref={localVideoref} autoPlay muted className={styles.videoPreview}></video>
+                        <video ref={localVideoref} autoPlay muted playsInline className={styles.videoPreview}></video>
 
                         <div className={styles.inputContainer}>
                             <TextField
@@ -680,7 +693,7 @@ export default function VideoMeetComponent() {
                         </div>
 
 
-                        <video className={styles.meetUserVideo} ref={localVideoref} autoPlay muted></video>
+                        <video className={styles.meetUserVideo} ref={localVideoref} autoPlay muted playsInline></video>
 
                         <div className={styles.conferenceView}>
                             {videos.map((video) => (
@@ -694,6 +707,7 @@ export default function VideoMeetComponent() {
                                             }
                                         }}
                                         autoPlay
+                                        playsInline
                                     >
                                     </video>
                                 </div>
