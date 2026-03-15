@@ -58,10 +58,6 @@ export default function VideoMeetComponent() {
     const videoRef = useRef([])
 
     let [videos, setVideos] = useState([])
-    let [focusLossCount, setFocusLossCount] = useState(0);
-    let [participantsFocus, setParticipantsFocus] = useState({});
-    let [showDashboard, setShowDashboard] = useState(false);
-    let [showScreenshotOverlay, setShowScreenshotOverlay] = useState(false);
 
     const chatEndRef = useRef(null);
 
@@ -294,23 +290,8 @@ export default function VideoMeetComponent() {
 
             socketRef.current.on('chat-message', addMessage)
 
-            socketRef.current.on('focus-changed', (data) => {
-                setParticipantsFocus(prev => ({
-                    ...prev,
-                    [data.socketId]: {
-                        username: data.username,
-                        count: data.focusLossCount
-                    }
-                }));
-            });
-
             socketRef.current.on('user-left', (id) => {
                 setVideos((videos) => videos.filter((video) => video.socketId !== id))
-                setParticipantsFocus((prev) => {
-                    const updated = { ...prev };
-                    delete updated[id];
-                    return updated;
-                });
                 if (connectionsRef.current[id]) {
                     connectionsRef.current[id].close();
                     delete connectionsRef.current[id];
@@ -320,15 +301,6 @@ export default function VideoMeetComponent() {
             socketRef.current.on('user-joined', (id, participants) => {
                 participants.forEach((p) => {
                     const socketListId = p.id;
-
-                    // Sync focus count if we already have data for this participant
-                    setParticipantsFocus(prev => ({
-                        ...prev,
-                        [socketListId]: {
-                            username: p.username,
-                            count: prev[socketListId]?.count || 0
-                        }
-                    }));
 
                     if (connectionsRef.current[socketListId]) return;
                     if (socketIdRef.current === socketListId) return;
@@ -428,20 +400,20 @@ export default function VideoMeetComponent() {
 
     let handleVideo = () => {
         setVideo(!video);
-        if (window.localStream) {
-            const videoTrack = window.localStream.getVideoTracks()[0];
-            if (videoTrack) {
-                videoTrack.enabled = !video;
-            }
+        let userStream = localVideoref.current.srcObject;
+        if (userStream) {
+            userStream.getVideoTracks().forEach(track => {
+                track.enabled = !video;
+            });
         }
     }
     let handleAudio = () => {
         setAudio(!audio)
-        if (window.localStream) {
-            const audioTrack = window.localStream.getAudioTracks()[0];
-            if (audioTrack) {
-                audioTrack.enabled = !audio;
-            }
+        let userStream = localVideoref.current.srcObject;
+        if (userStream) {
+            userStream.getAudioTracks().forEach(track => {
+                track.enabled = !audio;
+            });
         }
     }
 
@@ -474,44 +446,6 @@ export default function VideoMeetComponent() {
     }
 
     useEffect(() => {
-        if (!askForUsername) {
-            const handleFocusLoss = () => {
-                setShowScreenshotOverlay(true);
-                setFocusLossCount(prev => {
-                    const newCount = prev + 1;
-                    if (socketRef.current) {
-                        socketRef.current.emit("focus-changed", {
-                            username: username,
-                            focusLossCount: newCount
-                        });
-                    }
-                    return newCount;
-                });
-            };
-
-            const handleScreenshotAttempt = (e) => {
-                if (e.key === "PrintScreen") {
-                    setShowScreenshotOverlay(true);
-                }
-            };
-
-            window.addEventListener("blur", handleFocusLoss);
-            window.addEventListener("keydown", handleScreenshotAttempt);
-            document.addEventListener("visibilitychange", () => {
-                if (document.hidden) {
-                    handleFocusLoss();
-                }
-            });
-
-            return () => {
-                window.removeEventListener("blur", handleFocusLoss);
-                window.removeEventListener("keydown", handleScreenshotAttempt);
-                document.removeEventListener("visibilitychange", handleFocusLoss);
-            };
-        }
-    }, [askForUsername, username]);
-
-    useEffect(() => {
         chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages]);
 
@@ -539,11 +473,6 @@ export default function VideoMeetComponent() {
     let connect = () => {
         setAskForUsername(false);
         getMedia();
-        if (document.documentElement.requestFullscreen) {
-            document.documentElement.requestFullscreen().catch(e => {
-                console.log("Fullscreen request failed:", e);
-            });
-        }
     }
 
 
@@ -581,19 +510,9 @@ export default function VideoMeetComponent() {
                     </div>
                 </div> :
 
-
                 <div className={styles.meetVideoContainer}>
 
-                    {showScreenshotOverlay && (
-                        <div className={styles.screenshotOverlay} onClick={() => setShowScreenshotOverlay(false)}>
-                            <div className={styles.overlayContent}>
-                                <h2>Looks like you're trying to take a screenshot!</h2>
-                                <p>Click anywhere to return to the conversation</p>
-                            </div>
-                        </div>
-                    )}
-
-                    <div className={`${styles.blurWrapper} ${showScreenshotOverlay ? styles.screenshotBlur : ""}`}>
+                    <div className={styles.blurWrapper}>
                         <div className={styles.sidePanelContainer}>
                             {showModal && (
                                 <div className={styles.chatRoom}>
@@ -631,32 +550,6 @@ export default function VideoMeetComponent() {
                                 </div>
                             )}
 
-                            {showDashboard && (
-                                <div className={styles.dashboardPanel}>
-                                    <div className={styles.statusSection}>
-                                        <h2 className={styles.statusHeader}>Meeting Status</h2>
-                                        <div className={styles.statusText}>
-                                            <span>Total Members</span>
-                                            <span>{Object.keys(participantsFocus).length + 1}</span>
-                                        </div>
-                                    </div>
-                                    <div className={styles.dashboardContent}>
-                                        <h3>User status</h3>
-                                        <div className={`${styles.statRow} ${styles.activeUser}`}>
-                                            <span>{username} (You)</span>
-                                            <span>{focusLossCount} losses</span>
-                                        </div>
-                                        {Object.entries(participantsFocus).map(([id, data]) => (
-                                            id !== socketIdRef.current && (
-                                                <div key={id} className={styles.statRow}>
-                                                    <span>{data.username}</span>
-                                                    <span>{data.count} losses</span>
-                                                </div>
-                                            )
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
                         </div>
 
 
@@ -681,14 +574,6 @@ export default function VideoMeetComponent() {
                                     <ChatIcon />
                                 </IconButton>
                             </Badge>
-
-                            <Button
-                                variant="contained"
-                                onClick={() => setShowDashboard(!showDashboard)}
-                                style={{ marginLeft: "10px", backgroundColor: showDashboard ? "#ff4d4d" : "#1976d2" }}
-                            >
-                                User status
-                            </Button>
 
                         </div>
 
