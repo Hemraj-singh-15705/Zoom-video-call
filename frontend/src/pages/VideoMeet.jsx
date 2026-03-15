@@ -37,7 +37,7 @@ export default function VideoMeetComponent() {
 
     let [video, setVideo] = useState(true);
 
-    let [audio, setAudio] = useState();
+    let [audio, setAudio] = useState(true);
 
     let [screen, setScreen] = useState();
 
@@ -59,6 +59,8 @@ export default function VideoMeetComponent() {
 
     let [videos, setVideos] = useState([])
     let [pinnedId, setPinnedId] = useState(null);
+    const [page, setPage] = useState(0);
+    const USERS_PER_PAGE = 9;
 
     const chatEndRef = useRef(null);
 
@@ -399,21 +401,76 @@ export default function VideoMeetComponent() {
         return Object.assign(stream.getVideoTracks()[0], { enabled: false })
     }
 
-    let handleVideo = () => {
-        setVideo(!video);
-        let userStream = localVideoref.current.srcObject;
-        if (userStream) {
-            userStream.getVideoTracks().forEach(track => {
-                track.enabled = !video;
+    let handleVideo = async () => {
+        let videoState = !video;
+        setVideo(videoState);
+
+        if (videoState) {
+            // Turning ON: Get new track and replace it in all connections
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                const newTrack = stream.getVideoTracks()[0];
+                
+                // Update local stream
+                const oldTrack = window.localStream.getVideoTracks()[0];
+                if (oldTrack) {
+                    window.localStream.removeTrack(oldTrack);
+                }
+                window.localStream.addTrack(newTrack);
+                
+                // Update all active peer connections
+                for (let id in connectionsRef.current) {
+                    const senders = connectionsRef.current[id].getSenders();
+                    const videoSender = senders.find(s => s.track && s.track.kind === 'video');
+                    if (videoSender) {
+                        videoSender.replaceTrack(newTrack);
+                    }
+                }
+                
+                if (localVideoref.current) {
+                    localVideoref.current.srcObject = window.localStream;
+                }
+            } catch (e) {
+                console.error("Error restarting video:", e);
+            }
+        } else {
+            // Turning OFF: Stop the track to turn off the hardware light
+            window.localStream.getVideoTracks().forEach(track => {
+                track.stop();
             });
         }
     }
-    let handleAudio = () => {
-        setAudio(!audio)
-        let userStream = localVideoref.current.srcObject;
-        if (userStream) {
-            userStream.getAudioTracks().forEach(track => {
-                track.enabled = !audio;
+
+    let handleAudio = async () => {
+        let audioState = !audio;
+        setAudio(audioState);
+
+        if (audioState) {
+            // Turning ON
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                const newTrack = stream.getAudioTracks()[0];
+                
+                const oldTrack = window.localStream.getAudioTracks()[0];
+                if (oldTrack) {
+                    window.localStream.removeTrack(oldTrack);
+                }
+                window.localStream.addTrack(newTrack);
+                
+                for (let id in connectionsRef.current) {
+                    const senders = connectionsRef.current[id].getSenders();
+                    const audioSender = senders.find(s => s.track && s.track.kind === 'audio');
+                    if (audioSender) {
+                        audioSender.replaceTrack(newTrack);
+                    }
+                }
+            } catch (e) {
+                console.error("Error restarting audio:", e);
+            }
+        } else {
+            // Turning OFF
+            window.localStream.getAudioTracks().forEach(track => {
+                track.stop();
             });
         }
     }
@@ -580,40 +637,75 @@ export default function VideoMeetComponent() {
 
 
                         <div className={styles.conferenceView}>
-                            <div
-                                className={`${styles.videoContainer} ${pinnedId === 'local' ? styles.pinned : ''}`}
-                                onClick={() => setPinnedId(pinnedId === 'local' ? null : 'local')}
-                            >
-                                <video
-                                    className={styles.meetUserVideo}
-                                    ref={localVideoref}
-                                    autoPlay
-                                    muted
-                                    playsInline
-                                ></video>
-                                <div className={styles.participantName}>You (Me)</div>
-                            </div>
+                            {(() => {
+                                const allParticipants = [
+                                    { socketId: 'local', stream: localVideoref.current?.srcObject, isLocal: true },
+                                    ...videos
+                                ];
 
-                            {videos.map((video) => (
-                                <div
-                                    key={video.socketId}
-                                    className={`${styles.videoContainer} ${pinnedId === video.socketId ? styles.pinned : ''}`}
-                                    onClick={() => setPinnedId(pinnedId === video.socketId ? null : video.socketId)}
-                                >
-                                    <video
-                                        data-socket={video.socketId}
-                                        ref={ref => {
-                                            if (ref && video.stream) {
-                                                ref.srcObject = video.stream;
-                                            }
-                                        }}
-                                        autoPlay
-                                        playsInline
-                                    ></video>
-                                    <div className={styles.participantName}>{video.socketId.substring(0, 5)}...</div>
-                                </div>
-                            ))}
+                                const start = page * USERS_PER_PAGE;
+                                const visibleParticipants = allParticipants.slice(start, start + USERS_PER_PAGE);
+
+                                return visibleParticipants.map((participant) => (
+                                    <div
+                                        key={participant.socketId}
+                                        className={`${styles.videoContainer} ${pinnedId === participant.socketId ? styles.pinned : ''}`}
+                                        onClick={() => setPinnedId(pinnedId === participant.socketId ? null : participant.socketId)}
+                                    >
+                                        {participant.isLocal ? (
+                                            video ? (
+                                                <video
+                                                    ref={localVideoref}
+                                                    autoPlay
+                                                    muted
+                                                    playsInline
+                                                ></video>
+                                            ) : (
+                                                <div className={styles.videoPlaceholder}>Camera Off</div>
+                                            )
+                                        ) : (
+                                            <video
+                                                data-socket={participant.socketId}
+                                                ref={ref => {
+                                                    if (ref && participant.stream) {
+                                                        ref.srcObject = participant.stream;
+                                                    }
+                                                }}
+                                                autoPlay
+                                                playsInline
+                                            ></video>
+                                        )}
+                                        <div className={styles.participantName}>
+                                            {participant.isLocal ? "You (Me)" : `${participant.socketId.substring(0, 5)}...`}
+                                        </div>
+                                    </div>
+                                ));
+                            })()}
                         </div>
+
+                        {videos.length + 1 > USERS_PER_PAGE && (
+                            <div className={styles.paginationControls}>
+                                <Button
+                                    disabled={page === 0}
+                                    onClick={() => setPage(page - 1)}
+                                    variant="contained"
+                                    style={{ backgroundColor: "rgba(255,255,255,0.1)", borderRadius: "20px" }}
+                                >
+                                    Previous
+                                </Button>
+                                <span style={{ color: "white", alignSelf: "center" }}>
+                                    Page {page + 1} of {Math.ceil((videos.length + 1) / USERS_PER_PAGE)}
+                                </span>
+                                <Button
+                                    disabled={(page + 1) * USERS_PER_PAGE >= videos.length + 1}
+                                    onClick={() => setPage(page + 1)}
+                                    variant="contained"
+                                    style={{ backgroundColor: "rgba(255,255,255,0.1)", borderRadius: "20px" }}
+                                >
+                                    Next
+                                </Button>
+                            </div>
+                        )}
 
                     </div>
 

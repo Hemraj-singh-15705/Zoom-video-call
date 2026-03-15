@@ -7,14 +7,26 @@
 .conferenceView {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    grid-auto-rows: min-content;
     gap: 15px;
     padding: 20px;
     width: 100%;
-    height: calc(100vh - 80px); /* Subtract button container height */
+    height: calc(100vh - 150px); /* Leave space for both controls */
     overflow-y: auto;
     box-sizing: border-box;
     align-content: center;
     justify-items: center;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+.conferenceView::-webkit-scrollbar {
+    width: 6px;
+}
+
+.conferenceView::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
 }
 
 .videoContainer {
@@ -62,6 +74,19 @@
     border-radius: 4px;
     font-size: 0.8rem;
     backdrop-filter: blur(4px);
+    z-index: 10;
+}
+
+.videoPlaceholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #1a1c1e;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 1.2rem;
+    font-weight: 500;
 }
 
 .buttonContainers {
@@ -93,6 +118,21 @@
 .buttonContainers button:hover {
     transform: translateY(-2px);
     background: rgba(255, 255, 255, 0.1);
+}
+
+.paginationControls {
+    position: absolute;
+    bottom: 110px; /* Above main controls */
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 20px;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(10px);
+    padding: 8px 16px;
+    border-radius: 30px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    z-index: 900;
 }
 
 .sidePanelContainer {
