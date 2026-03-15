@@ -58,6 +58,7 @@ export default function VideoMeetComponent() {
     const videoRef = useRef([])
 
     let [videos, setVideos] = useState([])
+    let [pinnedId, setPinnedId] = useState(null);
 
     const chatEndRef = useRef(null);
 
@@ -578,13 +579,28 @@ export default function VideoMeetComponent() {
                         </div>
 
 
-                        <video className={styles.meetUserVideo} ref={localVideoref} autoPlay muted playsInline></video>
-
                         <div className={styles.conferenceView}>
-                            {videos.map((video) => (
-                                <div key={video.socketId}>
-                                    <video
+                            <div
+                                className={`${styles.videoContainer} ${pinnedId === 'local' ? styles.pinned : ''}`}
+                                onClick={() => setPinnedId(pinnedId === 'local' ? null : 'local')}
+                            >
+                                <video
+                                    className={styles.meetUserVideo}
+                                    ref={localVideoref}
+                                    autoPlay
+                                    muted
+                                    playsInline
+                                ></video>
+                                <div className={styles.participantName}>You (Me)</div>
+                            </div>
 
+                            {videos.map((video) => (
+                                <div
+                                    key={video.socketId}
+                                    className={`${styles.videoContainer} ${pinnedId === video.socketId ? styles.pinned : ''}`}
+                                    onClick={() => setPinnedId(pinnedId === video.socketId ? null : video.socketId)}
+                                >
+                                    <video
                                         data-socket={video.socketId}
                                         ref={ref => {
                                             if (ref && video.stream) {
@@ -593,12 +609,10 @@ export default function VideoMeetComponent() {
                                         }}
                                         autoPlay
                                         playsInline
-                                    >
-                                    </video>
+                                    ></video>
+                                    <div className={styles.participantName}>{video.socketId.substring(0, 5)}...</div>
                                 </div>
-
                             ))}
-
                         </div>
 
                     </div>
