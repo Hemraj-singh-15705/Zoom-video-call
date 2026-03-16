@@ -36,9 +36,9 @@ const start = async () => {
 
         const connectionDb = await mongoose.connect(process.env.MONGO_URI)
 
-        console.log(`MONGO Connected DB HOst: ${connectionDb.connection.host}`)
+        console.log(`MONGO Connected DB Host: ${connectionDb.connection.host}`)
         server.listen(app.get("port"), () => {
-            console.log("LISTENIN ON PORT 8000")
+            console.log(`LISTENIN ON PORT ${app.get("port")}`)
         });
     } catch (e) {
         console.log("Error Connecting to DB", e)
