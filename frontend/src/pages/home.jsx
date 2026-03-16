@@ -44,7 +44,7 @@ function HomeComponent() {
                     </Button>
 
                     <Button variant="contained" onClick={() => {
-                        window.location.href = "http://localhost:3001"
+                        alert("E-LinkUp is currently only available locally. We will deploy it soon!")
                     }} style={{ marginLeft: "10px" }}>
                         E-LinkUp
                     </Button>
