@@ -44,7 +44,7 @@ function HomeComponent() {
                     </Button>
 
                     <Button variant="contained" onClick={() => {
-                        alert("E-LinkUp is currently only available locally. We will deploy it soon!")
+                        navigate("/elinkup-maintenance")
                     }} style={{ marginLeft: "10px" }}>
                         E-LinkUp
                     </Button>
