@@ -1,10 +1,13 @@
 import React from 'react'
 import "../App.css"
 import { Link, useNavigate } from 'react-router-dom'
+import { IconButton } from '@mui/material';
+import MenuIcon from '@mui/icons-material/Menu';
 export default function LandingPage() {
 
 
     const router = useNavigate();
+    const [menuOpen, setMenuOpen] = React.useState(false);
 
     return (
         <div className='landingPageContainer'>
@@ -12,7 +15,14 @@ export default function LandingPage() {
                 <div className='navHeader'>
                     <h2>LinkUp</h2>
                 </div>
-                <div className='navlist'>
+                
+                <div className='mobileMenuIcon'>
+                    <IconButton onClick={() => setMenuOpen(!menuOpen)} style={{ color: "white" }}>
+                        <MenuIcon />
+                    </IconButton>
+                </div>
+
+                <div className={`navlist ${menuOpen ? 'navlistMobileOpen' : ''}`}>
                     <p onClick={() => {
                         router("/aljk23")
                     }}>Join as Guest</p>

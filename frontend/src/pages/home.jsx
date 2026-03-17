@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import "../App.css";
 import { Button, IconButton, TextField } from '@mui/material';
 import RestoreIcon from '@mui/icons-material/Restore';
+import MenuIcon from '@mui/icons-material/Menu';
 import { AuthContext } from '../contexts/AuthContext';
 
 function HomeComponent() {
@@ -11,6 +12,7 @@ function HomeComponent() {
 
     let navigate = useNavigate();
     const [meetingCode, setMeetingCode] = useState("");
+    const [menuOpen, setMenuOpen] = useState(false);
 
 
     const { addToUserHistory } = useContext(AuthContext);
@@ -25,11 +27,16 @@ function HomeComponent() {
             <div className="navBar">
 
                 <div style={{ display: "flex", alignItems: "center" }}>
-
                     <h2>LinkUp Video Call</h2>
                 </div>
 
-                <div style={{ display: "flex", alignItems: "center" }}>
+                <div className='mobileMenuIcon'>
+                    <IconButton onClick={() => setMenuOpen(!menuOpen)} style={{ color: "black" }}>
+                        <MenuIcon />
+                    </IconButton>
+                </div>
+
+                <div className={`navBarActions ${menuOpen ? 'navBarActionsMobileOpen' : ''}`} style={{ display: "flex", alignItems: "center" }}>
                     <div className="historyButton" onClick={() => navigate("/history")}>
                         <IconButton>
                             <RestoreIcon />
@@ -56,8 +63,6 @@ function HomeComponent() {
                         Logout
                     </Button>
                 </div>
-
-
             </div>
 
 

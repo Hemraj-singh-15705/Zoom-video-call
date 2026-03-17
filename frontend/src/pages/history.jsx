@@ -45,23 +45,18 @@ export default function History() {
     }
 
     return (
-        <div>
+        <div style={{ padding: "20px", maxWidth: "1200px", margin: "0 auto" }}>
 
             <IconButton onClick={() => {
                 routeTo("/home")
             }}>
                 <HomeIcon />
             </IconButton >
-            {
-                (meetings.length !== 0) ? meetings.map((e, i) => {
-                    return (
-
-                        <>
-
-
-                            <Card key={i} variant="outlined">
-
-
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "20px", marginTop: "20px" }}>
+                {
+                    (meetings.length !== 0) ? meetings.map((e, i) => {
+                        return (
+                            <Card key={i} variant="outlined" sx={{ borderRadius: "12px", boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}>
                                 <CardContent>
                                     <Typography sx={{ fontSize: 14 }} color="text.secondary" gutterBottom>
                                         Code: {e.meetingCode}
@@ -70,19 +65,12 @@ export default function History() {
                                     <Typography sx={{ mb: 1.5 }} color="text.secondary">
                                         Date: {formatDate(e.date)}
                                     </Typography>
-
                                 </CardContent>
-
-
                             </Card>
-
-
-                        </>
-                    )
-                }) : <></>
-
-            }
-
+                        )
+                    }) : <Typography>No history found</Typography>
+                }
+            </div>
         </div>
     )
 }

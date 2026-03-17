@@ -6,18 +6,27 @@
 
 .conferenceView {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
     grid-auto-rows: min-content;
     gap: 15px;
     padding: 20px;
     width: 100%;
-    height: calc(100vh - 150px); /* Leave space for both controls */
+    height: calc(100vh - 150px);
     overflow-y: auto;
     box-sizing: border-box;
     align-content: center;
     justify-items: center;
     scrollbar-width: thin;
     scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+@media (max-width: 600px) {
+    .conferenceView {
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        padding: 10px;
+        gap: 10px;
+        height: calc(100vh - 120px);
+    }
 }
 
 .conferenceView::-webkit-scrollbar {
@@ -107,6 +116,18 @@
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
 }
 
+@media (max-width: 600px) {
+    .buttonContainers {
+        padding: 8px 15px;
+        gap: 8px;
+        bottom: 20px;
+    }
+
+    .buttonContainers svg {
+        font-size: 1.8rem !important;
+    }
+}
+
 .buttonContainers svg {
     font-size: 2.22rem;
 }
@@ -162,6 +183,13 @@
     border-left: 1px solid rgba(255, 255, 255, 0.1);
     animation: slideIn 0.3s ease-out;
     border-radius: 16px 0 0 16px;
+}
+
+@media (max-width: 600px) {
+    .chatRoom {
+        width: 100vw;
+        border-radius: 0;
+    }
 }
 
 @keyframes slideIn {
@@ -227,6 +255,13 @@
     align-items: center;
     gap: 20px;
     width: 400px;
+    max-width: 90%;
+}
+
+@media (max-width: 600px) {
+    .lobbyBox {
+        padding: 20px;
+    }
 }
 
 .lobbyBox h2 {

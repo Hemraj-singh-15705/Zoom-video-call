@@ -13,7 +13,8 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-
+  flex-wrap: wrap;
+  gap: 1rem;
 }
 
 .landingPageContainer nav h2 {
@@ -25,15 +26,78 @@
   display: flex;
   gap: 1.6rem;
   cursor: pointer;
+  align-items: center;
+}
 
+.mobileMenuIcon {
+  display: none;
 }
 
 .landingMainContainer {
   display: flex;
   justify-content: space-between;
   padding-inline: 3rem;
-  height: 80vh;
+  min-height: 80vh;
   align-items: center;
+}
+
+@media (max-width: 768px) {
+  .mobileMenuIcon {
+    display: block;
+  }
+
+  .navlist {
+    display: none !important;
+    position: absolute;
+    top: 5rem;
+    right: 1.2rem;
+    background: rgba(0, 0, 0, 0.9);
+    flex-direction: column;
+    padding: 1.5rem;
+    border-radius: 12px;
+    z-index: 2000;
+    width: auto;
+    min-width: 200px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+
+  .navlistMobileOpen {
+    display: flex !important;
+  }
+
+  .landingMainContainer {
+    flex-direction: column;
+    padding-inline: 1.5rem;
+    padding-block: 1rem; /* Reduced padding */
+    text-align: center;
+    justify-content: center;
+  }
+
+  .landingMainContainer > div:nth-child(1) {
+    font-size: 1.2rem !important; /* Slightly smaller font */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: 2rem;
+  }
+
+  .landingMainContainer > div:nth-child(1) h1 {
+    font-size: 1.8rem;
+  }
+
+  .landingMainContainer > div:nth-child(2) img {
+    height: auto !important;
+    width: 90% !important; /* Use width instead of height for better phone scaling */
+    max-width: 350px;
+    margin-top: 1.5rem;
+  }
+
+  .landingPageContainer nav .navlist p {
+    font-size: 1.1rem;
+    padding-block: 0.5rem;
+  }
 }
 
 .landingMainContainer>div:nth-child(1) {
@@ -64,15 +128,93 @@
   align-items: center;
   justify-content: space-between;
   padding-inline: 20px;
-  text-align: center;
-
+  padding-block: 10px;
+  flex-wrap: wrap;
+  gap: 10px;
 }
+
+@media (max-width: 768px) {
+  .navBar {
+    justify-content: center;
+  }
+  
+  .navBar > div:nth-child(2) {
+    width: 100%;
+    justify-content: center;
+    overflow-x: auto;
+    padding-bottom: 5px;
+  }
+}
+
+@media (max-width: 768px) {
+  .navBar {
+    justify-content: space-between !important;
+    position: relative;
+  }
+  
+  .navBarActions {
+    display: none !important;
+    position: absolute;
+    top: 100%;
+    right: 20px;
+    background: white;
+    flex-direction: column;
+    padding: 1rem;
+    border-radius: 12px;
+    z-index: 2000;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    border: 1px solid #eee;
+    gap: 15px;
+    align-items: flex-start !important;
+  }
+
+  .navBarActionsMobileOpen {
+    display: flex !important;
+  }
+
+  .navBarActions button, .navBarActions .historyButton {
+    margin-left: 0 !important;
+    width: 100%;
+    justify-content: flex-start;
+  }
+}
+
 .meetContainer {
   display: flex;
   padding-inline: 20px;
-  height: 80vh;
-  gap: 10vw;
+  min-height: 80vh;
+  gap: 5vw;
   justify-content: center;
+}
+
+@media (max-width: 768px) {
+  .meetContainer {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 20px;
+    padding-block: 20px;
+  }
+
+  .leftPanel {
+    justify-content: center;
+    order: 2; /* Move text below image on mobile for better flow */
+  }
+  
+  .leftPanel h2 {
+    font-size: 1.4rem;
+    margin-bottom: 1rem;
+  }
+
+  .rightPanel {
+    order: 1;
+    justify-content: center;
+  }
+
+  .rightPanel > img {
+    width: 80% !important;
+    max-width: 300px; /* Resize logo/image on phone */
+  }
 }
 
 
