@@ -12,6 +12,7 @@ import ScreenShareIcon from '@mui/icons-material/ScreenShare';
 import StopScreenShareIcon from '@mui/icons-material/StopScreenShare'
 import ChatIcon from '@mui/icons-material/Chat'
 import server from '../environment';
+import { toast } from 'react-toastify';
 
 const server_url = server;
 
@@ -294,7 +295,14 @@ export default function VideoMeetComponent() {
             socketRef.current.on('chat-message', addMessage)
 
             socketRef.current.on('user-left', (id) => {
-                setVideos((videos) => videos.filter((video) => video.socketId !== id))
+                setVideos((prevVideos) => {
+                    const leavingUser = prevVideos.find(v => v.socketId === id);
+                    if (leavingUser) {
+                        toast.info(`${leavingUser.username || "A user"} left the call`);
+                    }
+                    return prevVideos.filter((video) => video.socketId !== id);
+                });
+
                 if (connectionsRef.current[id]) {
                     connectionsRef.current[id].close();
                     delete connectionsRef.current[id];
@@ -302,8 +310,14 @@ export default function VideoMeetComponent() {
             })
 
             socketRef.current.on('user-joined', (id, participants) => {
+                const joinedUser = participants.find(p => p.id === id);
+                if (joinedUser && id !== socketIdRef.current) {
+                    toast.success(`${joinedUser.username} joined the call`);
+                }
+
                 participants.forEach((p) => {
                     const socketListId = p.id;
+                    const socketListUsername = p.username;
 
                     if (connectionsRef.current[socketListId]) return;
                     if (socketIdRef.current === socketListId) return;
@@ -341,6 +355,7 @@ export default function VideoMeetComponent() {
                             console.log("CREATING NEW");
                             let newVideo = {
                                 socketId: socketListId,
+                                username: socketListUsername,
                                 stream: stream,
                                 autoplay: true,
                                 playsinline: true
@@ -676,7 +691,7 @@ export default function VideoMeetComponent() {
                                             ></video>
                                         )}
                                         <div className={styles.participantName}>
-                                            {participant.isLocal ? "You (Me)" : `${participant.socketId.substring(0, 5)}...`}
+                                            {participant.isLocal ? "You (Me)" : (participant.username || `${participant.socketId.substring(0, 5)}...`)}
                                         </div>
                                     </div>
                                 ));

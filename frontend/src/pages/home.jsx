@@ -6,6 +6,7 @@ import { Button, IconButton, TextField } from '@mui/material';
 import RestoreIcon from '@mui/icons-material/Restore';
 import MenuIcon from '@mui/icons-material/Menu';
 import { AuthContext } from '../contexts/AuthContext';
+import { toast } from 'react-toastify';
 
 function HomeComponent() {
 
@@ -58,6 +59,7 @@ function HomeComponent() {
 
                     <Button onClick={() => {
                         localStorage.removeItem("token")
+                        toast.success("Logged out successfully")
                         navigate("/auth")
                     }} className="logoutButton">
                         Logout

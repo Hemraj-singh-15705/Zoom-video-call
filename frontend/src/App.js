@@ -7,10 +7,13 @@ import VideoMeetComponent from './pages/VideoMeet';
 import HomeComponent from './pages/home';
 import History from './pages/history';
 import ElinkupMaintenance from './pages/ElinkupMaintenance';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 function App() {
   return (
     <div className="App">
+      <ToastContainer />
 
       <Router>
 

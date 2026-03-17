@@ -13,7 +13,7 @@ import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import Typography from '@mui/material/Typography';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import { AuthContext } from '../contexts/AuthContext';
-import { Snackbar } from '@mui/material';
+import { toast } from 'react-toastify';
 
 
 
@@ -29,12 +29,9 @@ export default function Authentication() {
     const [password, setPassword] = React.useState();
     const [name, setName] = React.useState();
     const [error, setError] = React.useState();
-    const [message, setMessage] = React.useState();
 
 
     const [formState, setFormState] = React.useState(0);
-
-    const [open, setOpen] = React.useState(false)
 
 
     const { handleRegister, handleLogin } = React.useContext(AuthContext);
@@ -42,17 +39,14 @@ export default function Authentication() {
     let handleAuth = async () => {
         try {
             if (formState === 0) {
-
-                let result = await handleLogin(username, password)
-
-
+                await handleLogin(username, password)
+                toast.success("Login Successful!")
             }
             if (formState === 1) {
                 let result = await handleRegister(name, username, password);
                 console.log(result);
                 setUsername("");
-                setMessage(result);
-                setOpen(true);
+                toast.success(result || "Registered Successfully!")
                 setError("")
                 setFormState(0)
                 setPassword("")
@@ -163,13 +157,6 @@ export default function Authentication() {
                     </Box>
                 </Grid>
             </Grid>
-
-            <Snackbar
-
-                open={open}
-                autoHideDuration={4000}
-                message={message}
-            />
 
         </ThemeProvider>
     );
