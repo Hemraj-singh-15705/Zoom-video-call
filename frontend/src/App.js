@@ -7,6 +7,7 @@ import VideoMeetComponent from './pages/VideoMeet';
 import HomeComponent from './pages/home';
 import History from './pages/history';
 import ElinkupMaintenance from './pages/ElinkupMaintenance';
+import SimonSays from './pages/SimonSays';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -29,6 +30,7 @@ function App() {
             <Route path='/home' element={<HomeComponent />} />
             <Route path='/history' element={<History />} />
             <Route path='/elinkup-maintenance' element={<ElinkupMaintenance />} />
+            <Route path='/simon-says' element={<SimonSays />} />
             <Route path='/:url' element={<VideoMeetComponent />} />
           </Routes>
         </AuthProvider>

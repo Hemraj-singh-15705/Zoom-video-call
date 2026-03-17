@@ -26,7 +26,21 @@ const login = async (req, res) => {
 
             user.token = token;
             await user.save();
-            return res.status(httpStatus.OK).json({ token: token })
+
+            res.cookie("token", token, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === "production",
+                sameSite: "Lax",
+                maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+            });
+
+            return res.status(httpStatus.OK).json({ 
+                token: token,
+                user: {
+                    username: user.username,
+                    name: user.name
+                }
+            })
         } else {
             return res.status(httpStatus.UNAUTHORIZED).json({ message: "Invalid Username or password" })
         }
@@ -67,11 +81,8 @@ const register = async (req, res) => {
 
 
 const getUserHistory = async (req, res) => {
-    const { token } = req.query;
-
     try {
-        const user = await User.findOne({ token: token });
-        const meetings = await Meeting.find({ user_id: user.username })
+        const meetings = await Meeting.find({ user_id: req.user.username })
         res.json(meetings)
     } catch (e) {
         res.json({ message: `Something went wrong ${e}` })
@@ -79,13 +90,11 @@ const getUserHistory = async (req, res) => {
 }
 
 const addToHistory = async (req, res) => {
-    const { token, meeting_code } = req.body;
+    const { meeting_code } = req.body;
 
     try {
-        const user = await User.findOne({ token: token });
-
         const newMeeting = new Meeting({
-            user_id: user.username,
+            user_id: req.user.username,
             meetingCode: meeting_code
         })
 
@@ -98,4 +107,19 @@ const addToHistory = async (req, res) => {
 }
 
 
-export { login, register, getUserHistory, addToHistory }
+const logout = async (req, res) => {
+    res.clearCookie("token");
+    res.status(httpStatus.OK).json({ message: "Logged out successfully" });
+}
+
+const getUser = async (req, res) => {
+    if (req.user) {
+        return res.json({
+            username: req.user.username,
+            name: req.user.name
+        });
+    }
+    res.status(httpStatus.UNAUTHORIZED).json({ message: "Not authenticated" });
+}
+
+export { login, register, getUserHistory, addToHistory, logout, getUser }

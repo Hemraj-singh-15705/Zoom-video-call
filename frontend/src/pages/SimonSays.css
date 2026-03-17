@@ -1,0 +1,36 @@
+.simon-board {
+    display: grid;
+    grid-template-columns: 150px 150px;
+    gap: 20px;
+    justify-content: center;
+    margin-top: 30px;
+}
+
+.simon-btn {
+    width: 150px;
+    height: 150px;
+    border-radius: 15px;
+    cursor: pointer;
+    transition: transform 0.1s, opacity 0.2s;
+    opacity: 0.6;
+}
+
+.simon-btn:hover {
+    transform: scale(1.02);
+}
+
+.simon-btn.active {
+    opacity: 1;
+    transform: scale(1.05);
+    box-shadow: 0 0 20px currentColor;
+}
+
+.red { background-color: #d95980; color: #d95980; }
+.green { background-color: #63aac0; color: #63aac0; }
+.purple { background-color: #819ff9; color: #819ff9; }
+.yellow { background-color: #f99b45; color: #f99b45; }
+
+.simon-btn.red.active { background-color: white; }
+.simon-btn.green.active { background-color: white; }
+.simon-btn.purple.active { background-color: white; }
+.simon-btn.yellow.active { background-color: white; }

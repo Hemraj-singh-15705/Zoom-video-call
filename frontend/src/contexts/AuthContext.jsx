@@ -1,6 +1,6 @@
 import axios from "axios";
 import httpStatus from "http-status";
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import server from "../environment";
 
@@ -8,7 +8,8 @@ import server from "../environment";
 export const AuthContext = createContext({});
 
 const client = axios.create({
-    baseURL: `${server}/api/v1/users`
+    baseURL: `${server}/api/v1/users`,
+    withCredentials: true
 });
 
 console.log("Axios Client Initialized with BaseURL:", `${server}/api/v1/users`);
@@ -19,10 +20,25 @@ export const AuthProvider = ({ children }) => {
     const authContext = useContext(AuthContext);
 
 
-    const [userData, setUserData] = useState(authContext);
+    const [userData, setUserData] = useState(null);
 
 
     const router = useNavigate();
+
+    useEffect(() => {
+        const checkAuth = async () => {
+            try {
+                const response = await client.get("/me");
+                if (response.status === httpStatus.OK) {
+                    setUserData(response.data);
+                }
+            } catch (err) {
+                console.log("Not logged in");
+                localStorage.removeItem("token");
+            }
+        };
+        checkAuth();
+    }, []);
 
     const handleRegister = async (name, username, password) => {
         try {
@@ -53,6 +69,7 @@ export const AuthProvider = ({ children }) => {
 
             if (request.status === httpStatus.OK) {
                 localStorage.setItem("token", request.data.token);
+                setUserData(request.data.user);
                 router("/home")
             }
         } catch (err) {
@@ -60,13 +77,20 @@ export const AuthProvider = ({ children }) => {
         }
     }
 
+    const handleLogout = async () => {
+        try {
+            await client.post("/logout");
+            localStorage.removeItem("token");
+            setUserData(null);
+            router("/auth");
+        } catch (err) {
+            console.error("Logout failed", err);
+        }
+    }
+
     const getHistoryOfUser = async () => {
         try {
-            let request = await client.get("/get_all_activity", {
-                params: {
-                    token: localStorage.getItem("token")
-                }
-            });
+            let request = await client.get("/get_all_activity");
             return request.data
         } catch
          (err) {
@@ -77,7 +101,6 @@ export const AuthProvider = ({ children }) => {
     const addToUserHistory = async (meetingCode) => {
         try {
             let request = await client.post("/add_to_activity", {
-                token: localStorage.getItem("token"),
                 meeting_code: meetingCode
             });
             return request
@@ -88,7 +111,7 @@ export const AuthProvider = ({ children }) => {
 
 
     const data = {
-        userData, setUserData, addToUserHistory, getHistoryOfUser, handleRegister, handleLogin
+        userData, setUserData, addToUserHistory, getHistoryOfUser, handleRegister, handleLogin, handleLogout
     }
 
     return (

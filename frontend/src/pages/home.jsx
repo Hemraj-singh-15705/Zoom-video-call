@@ -46,7 +46,7 @@ function HomeComponent() {
                     </div>
 
                     <Button variant="contained" onClick={() => {
-                        window.location.href = "https://hemraj-singh-15705.github.io/simon-says-game/"
+                        navigate("/simon-says")
                     }} style={{ marginLeft: "10px" }}>
                         SIMON SAYS
                     </Button>
