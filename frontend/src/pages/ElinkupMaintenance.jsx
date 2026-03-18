@@ -1,7 +1,8 @@
 import React from 'react';
 import { Box, Typography, Button, Container } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import EngineeringIcon from '@mui/icons-material/Engineering';
+import RocketLaunchIcon from '@mui/icons-material/RocketLaunch';
+import LaunchIcon from '@mui/icons-material/Launch';
 
 const ElinkupMaintenance = () => {
     const navigate = useNavigate();
@@ -21,25 +22,41 @@ const ElinkupMaintenance = () => {
             }}
         >
             <Container maxWidth="sm">
-                <EngineeringIcon sx={{ fontSize: 100, color: '#ff4d4d', mb: 2 }} />
+                <RocketLaunchIcon sx={{ fontSize: 100, color: '#4caf50', mb: 2 }} />
                 <Typography variant="h3" gutterBottom sx={{ fontWeight: 'bold' }}>
-                    Under Maintenance
+                    E-LinkUp is Live!
                 </Typography>
                 <Typography variant="h6" sx={{ mb: 4, color: 'rgba(255,255,255,0.7)' }}>
-                    E-LinkUp is currently only available locally. We will deploy it soon!
+                    E-LinkUp has been officially deployed. You can now access it online!
                 </Typography>
-                <Button
-                    variant="contained"
-                    onClick={() => navigate('/home')}
-                    sx={{
-                        bgcolor: '#ff4d4d',
-                        '&:hover': { bgcolor: '#e60000' },
-                        padding: '10px 30px',
-                        borderRadius: '25px'
-                    }}
-                >
-                    Back to Home
-                </Button>
+                <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center' }}>
+                    <Button
+                        variant="contained"
+                        onClick={() => window.open('https://e-linkup.onrender.com/', '_blank')}
+                        startIcon={<LaunchIcon />}
+                        sx={{
+                            bgcolor: '#4caf50',
+                            '&:hover': { bgcolor: '#45a049' },
+                            padding: '10px 30px',
+                            borderRadius: '25px'
+                        }}
+                    >
+                        Visit E-LinkUp
+                    </Button>
+                    <Button
+                        variant="outlined"
+                        onClick={() => navigate('/home')}
+                        sx={{
+                            color: 'white',
+                            borderColor: 'white',
+                            '&:hover': { borderColor: 'rgba(255,255,255,0.7)', bgcolor: 'rgba(255,255,255,0.1)' },
+                            padding: '10px 30px',
+                            borderRadius: '25px'
+                        }}
+                    >
+                        Back to Home
+                    </Button>
+                </Box>
             </Container>
         </Box>
     );
