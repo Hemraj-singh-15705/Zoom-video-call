@@ -14,6 +14,18 @@ function HomeComponent() {
     let navigate = useNavigate();
     const [meetingCode, setMeetingCode] = useState("");
     const [menuOpen, setMenuOpen] = useState(false);
+    const [scheduledLink, setScheduledLink] = useState("");
+
+    let scheduleMeeting = () => {
+        let code = Math.random().toString(36).substring(2, 7) + "-" + Math.random().toString(36).substring(2, 7);
+        let link = window.location.origin + "/" + code;
+        setScheduledLink(link);
+    }
+
+    let handleCopy = () => {
+        navigator.clipboard.writeText(scheduledLink);
+        toast.success("Meeting link copied to clipboard!");
+    }
 
 
     const { addToUserHistory } = useContext(AuthContext);
@@ -73,11 +85,25 @@ function HomeComponent() {
                     <div>
                         <h2>Providing Quality Video Call Just Like Quality Education</h2>
 
-                        <div style={{ display: 'flex', gap: "10px" }}>
+                        <div style={{ display: 'flex', gap: "10px", marginBottom: "20px" }}>
 
                             <TextField onChange={e => setMeetingCode(e.target.value)} id="outlined-basic" label="Meeting Code" variant="outlined" />
                             <Button onClick={handleJoinVideoCall} variant='contained'>Join</Button>
 
+                        </div>
+
+                        <div style={{ display: 'flex', gap: "10px", flexWrap: 'wrap', alignItems: 'center' }}>
+                            <Button onClick={scheduleMeeting} variant='outlined'>Schedule Meeting</Button>
+                            {scheduledLink && (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', backgroundColor: '#f0f0f0', padding: '5px 10px', borderRadius: '5px' }}>
+                                    <p style={{ margin: 0, fontWeight: 'bold' }}>{scheduledLink}</p>
+                                    <Button onClick={handleCopy} size="small" variant="contained" color="success">Copy Link</Button>
+                                    <Button size="small" variant="text" onClick={() => {
+                                        addToUserHistory(scheduledLink.split('/').pop());
+                                        navigate(`/${scheduledLink.split('/').pop()}`);
+                                    }}>Start Now</Button>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>

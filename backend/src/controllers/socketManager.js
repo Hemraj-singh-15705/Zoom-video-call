@@ -102,6 +102,35 @@ export const connectToSocket = (server) => {
             }
         })
 
+        socket.on("raise-hand", (username) => {
+            const [matchingRoom, found] = Object.entries(connections).reduce(([room, isFound], [roomKey, roomValue]) => {
+                if (!isFound && roomValue.includes(socket.id)) return [roomKey, true];
+                return [room, isFound];
+            }, ['', false]);
+
+            if (found === true) {
+                connections[matchingRoom].forEach((elem) => {
+                    io.to(elem).emit("hand-raised", socket.id, username)
+                })
+            }
+        })
+
+        socket.on("end-meeting", () => {
+            const [matchingRoom, found] = Object.entries(connections).reduce(([room, isFound], [roomKey, roomValue]) => {
+                if (!isFound && roomValue.includes(socket.id)) return [roomKey, true];
+                return [room, isFound];
+            }, ['', false]);
+
+            if (found === true) {
+                connections[matchingRoom].forEach((elem) => {
+                    io.to(elem).emit("meeting-ended")
+                })
+                // Clean up entire room from server memory
+                delete connections[matchingRoom];
+                delete messages[matchingRoom];
+            }
+        })
+
         socket.on("disconnect", () => {
 
             var diffTime = Math.abs(timeOnline[socket.id] - new Date())
@@ -140,4 +169,5 @@ export const connectToSocket = (server) => {
 
     return io;
 }
+
 

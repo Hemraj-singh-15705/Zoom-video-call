@@ -11,6 +11,10 @@ import MicOffIcon from '@mui/icons-material/MicOff'
 import ScreenShareIcon from '@mui/icons-material/ScreenShare';
 import StopScreenShareIcon from '@mui/icons-material/StopScreenShare'
 import ChatIcon from '@mui/icons-material/Chat'
+import PanToolIcon from '@mui/icons-material/PanTool';
+import AttachFileIcon from '@mui/icons-material/AttachFile';
+import CancelPresentationIcon from '@mui/icons-material/CancelPresentation';
+import PictureInPictureAltIcon from '@mui/icons-material/PictureInPictureAlt';
 import server from '../environment';
 import { toast } from 'react-toastify';
 
@@ -60,6 +64,7 @@ export default function VideoMeetComponent() {
 
     let [videos, setVideos] = useState([])
     let [pinnedId, setPinnedId] = useState(null);
+    let [raisedHands, setRaisedHands] = useState([]);
     const [page, setPage] = useState(0);
     const USERS_PER_PAGE = 9;
 
@@ -309,6 +314,21 @@ export default function VideoMeetComponent() {
                 }
             })
 
+            socketRef.current.on('hand-raised', (id, senderUsername) => {
+                setRaisedHands(prev => [...prev, id]);
+                toast.info(`${senderUsername} raised their hand ✋`);
+                setTimeout(() => {
+                    setRaisedHands(prev => prev.filter(userId => userId !== id));
+                }, 5000);
+            });
+
+            socketRef.current.on('meeting-ended', () => {
+                toast.error("Host has ended the meeting for all participants.");
+                setTimeout(() => {
+                    handleEndCall();
+                }, 2000);
+            });
+
             socketRef.current.on('user-joined', (id, participants) => {
                 const joinedUser = participants.find(p => p.id === id);
                 if (joinedUser && id !== socketIdRef.current) {
@@ -332,41 +352,32 @@ export default function VideoMeetComponent() {
 
                     // Wait for their video stream
                     connectionsRef.current[socketListId].ontrack = (event) => {
-                        console.log("BEFORE:", videoRef.current);
-                        console.log("FINDING ID: ", socketListId);
-
                         let stream = event.streams[0];
 
-                        let videoExists = videoRef.current.find(video => video.socketId === socketListId);
+                        setVideos(prevVideos => {
+                            let videoExists = prevVideos.find(video => video.socketId === socketListId);
+                            let updatedVideos;
 
-                        if (videoExists) {
-                            console.log("FOUND EXISTING");
-
-                            // Update the stream of the existing video
-                            setVideos(videos => {
-                                const updatedVideos = videos.map(video =>
+                            if (videoExists) {
+                                // Update the stream of the existing video
+                                updatedVideos = prevVideos.map(video =>
                                     video.socketId === socketListId ? { ...video, stream: stream } : video
                                 );
-                                videoRef.current = updatedVideos;
-                                return updatedVideos;
-                            });
-                        } else {
-                            // Create a new video
-                            console.log("CREATING NEW");
-                            let newVideo = {
-                                socketId: socketListId,
-                                username: socketListUsername,
-                                stream: stream,
-                                autoplay: true,
-                                playsinline: true
-                            };
-
-                            setVideos(videos => {
-                                const updatedVideos = [...videos, newVideo];
-                                videoRef.current = updatedVideos;
-                                return updatedVideos;
-                            });
-                        }
+                            } else {
+                                // Create a new video
+                                let newVideo = {
+                                    socketId: socketListId,
+                                    username: socketListUsername,
+                                    stream: stream,
+                                    autoplay: true,
+                                    playsinline: true
+                                };
+                                updatedVideos = [...prevVideos, newVideo];
+                            }
+                            
+                            videoRef.current = updatedVideos;
+                            return updatedVideos;
+                        });
                     };
 
 
@@ -507,6 +518,46 @@ export default function VideoMeetComponent() {
         window.location.href = "/"
     }
 
+    let handleRaiseHand = () => {
+        socketRef.current.emit('raise-hand', username);
+        setRaisedHands(prev => [...prev, socketIdRef.current]);
+        setTimeout(() => {
+            setRaisedHands(prev => prev.filter(userId => userId !== socketIdRef.current));
+        }, 5000);
+    }
+    
+    let handleEndForAll = () => {
+        socketRef.current.emit('end-meeting');
+        handleEndCall();
+    }
+    
+    let togglePiP = async (e, id) => {
+        e.stopPropagation();
+        try {
+            if (document.pictureInPictureElement) {
+                await document.exitPictureInPicture();
+            } else {
+                const videoEl = document.querySelector(`video[data-socket="${id}"]`);
+                if (videoEl) {
+                    await videoEl.requestPictureInPicture();
+                }
+            }
+        } catch (err) {
+            toast.error("PiP not supported or failed");
+        }
+    }
+    
+    let handleFileUpload = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                socketRef.current.emit('chat-message', { type: 'file', content: event.target.result, fileName: file.name, fileType: file.type }, username);    
+            };
+            reader.readAsDataURL(file);
+        }
+    }
+
     let openChat = () => {
         setModal(!showModal);
         setNewMessages(0);
@@ -559,7 +610,7 @@ export default function VideoMeetComponent() {
                     <div className={styles.lobbyBox}>
                         <h2>Join Meeting</h2>
 
-                        <video ref={localVideoref} autoPlay muted playsInline className={styles.videoPreview}></video>
+                        <video ref={localVideoref} autoPlay muted playsInline className={styles.videoPreview} style={{ transform: "scaleX(-1)" }}></video>
 
                         <div className={styles.inputContainer}>
                             <TextField
@@ -594,12 +645,32 @@ export default function VideoMeetComponent() {
                                         {messages.length !== 0 ? messages.map((item, index) => (
                                             <div style={{ marginBottom: "20px" }} key={index}>
                                                 <p style={{ fontWeight: "bold", color: "#ff4d4d" }}>{item.sender}</p>
-                                                <p style={{ color: "white" }}>{item.data}</p>
+                                                {typeof item.data === 'string' ? (
+                                                    <p style={{ color: "white" }}>{item.data}</p>
+                                                ) : item.data.type === 'file' ? (
+                                                    item.data.fileType.startsWith('image/') ? 
+                                                    <img src={item.data.content} alt="attachment" style={{maxWidth: '100%', borderRadius: '5px', marginTop: '5px'}}/>
+                                                    : <a href={item.data.content} download={item.data.fileName} style={{color: '#ff4d4d', textDecoration: 'underline'}}>Download {item.data.fileName}</a>
+                                                ) : (
+                                                    <p style={{ color: "white" }}>{item.data.content}</p>
+                                                )}
                                             </div>
                                         )) : <p style={{ color: "rgba(255,255,255,0.5)" }}>No Messages Yet</p>}
                                         <div ref={chatEndRef} />
                                     </div>
                                     <div className={styles.chattingArea}>
+                                        <input
+                                            accept="image/*,.pdf,.txt"
+                                            style={{ display: 'none' }}
+                                            id="raised-button-file"
+                                            type="file"
+                                            onChange={handleFileUpload}
+                                        />
+                                        <label htmlFor="raised-button-file">
+                                            <IconButton component="span" style={{ color: "white", marginRight: "10px" }}>
+                                                <AttachFileIcon />
+                                            </IconButton>
+                                        </label>
                                         <TextField
                                             fullWidth
                                             value={message}
@@ -630,11 +701,17 @@ export default function VideoMeetComponent() {
                             <IconButton onClick={handleVideo} style={{ color: "white" }}>
                                 {(video === true) ? <VideocamIcon /> : <VideocamOffIcon />}
                             </IconButton>
-                            <IconButton onClick={handleEndCall} style={{ color: "red" }}>
+                            <IconButton onClick={handleEndCall} style={{ color: "red" }} title="Leave Meeting">
                                 <CallEndIcon />
+                            </IconButton>
+                            <IconButton onClick={handleEndForAll} style={{ color: "red", backgroundColor: "rgba(255,0,0,0.1)", marginLeft: "5px" }} title="End Meeting for All">
+                                <CancelPresentationIcon />
                             </IconButton>
                             <IconButton onClick={handleAudio} style={{ color: "white" }}>
                                 {audio === true ? <MicIcon /> : <MicOffIcon />}
+                            </IconButton>
+                            <IconButton onClick={handleRaiseHand} style={{ color: raisedHands.includes(socketIdRef.current) ? "#4caf50" : "white" }} title="Raise Hand">
+                                <PanToolIcon />
                             </IconButton>
 
                             {screenAvailable === true ?
@@ -674,6 +751,7 @@ export default function VideoMeetComponent() {
                                                     autoPlay
                                                     muted
                                                     playsInline
+                                                    style={{ transform: "scaleX(-1)" }}
                                                 ></video>
                                             ) : (
                                                 <div className={styles.videoPlaceholder}>Camera Off</div>
@@ -682,13 +760,27 @@ export default function VideoMeetComponent() {
                                             <video
                                                 data-socket={participant.socketId}
                                                 ref={ref => {
-                                                    if (ref && participant.stream) {
+                                                    if (ref && participant.stream && ref.srcObject !== participant.stream) {
                                                         ref.srcObject = participant.stream;
                                                     }
                                                 }}
                                                 autoPlay
                                                 playsInline
                                             ></video>
+                                        )}
+                                        {!participant.isLocal && (
+                                            <IconButton
+                                                style={{ position: 'absolute', top: '10px', right: '10px', color: 'white', backgroundColor: 'rgba(0,0,0,0.5)' }}
+                                                onClick={(e) => togglePiP(e, participant.socketId)}
+                                                size="small"
+                                            >
+                                                <PictureInPictureAltIcon fontSize="small" />
+                                            </IconButton>
+                                        )}
+                                        {raisedHands.includes(participant.socketId) && (
+                                            <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', fontSize: '3rem', zIndex: 10 }}>
+                                                ✋
+                                            </div>
                                         )}
                                         <div className={styles.participantName}>
                                             {participant.isLocal ? "You (Me)" : (participant.username || `${participant.socketId.substring(0, 5)}...`)}
