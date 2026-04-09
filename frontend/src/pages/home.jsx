@@ -16,10 +16,19 @@ function HomeComponent() {
     const [menuOpen, setMenuOpen] = useState(false);
     const [scheduledLink, setScheduledLink] = useState("");
 
-    let scheduleMeeting = () => {
+    let scheduleMeeting = async () => {
         let code = Math.random().toString(36).substring(2, 7) + "-" + Math.random().toString(36).substring(2, 7);
         let link = window.location.origin + "/" + code;
         setScheduledLink(link);
+        
+        // Save to owned meetings to identify as host
+        let owned = JSON.parse(localStorage.getItem('ownedMeetings') || '[]');
+        owned.push(code);
+        localStorage.setItem('ownedMeetings', JSON.stringify(owned));
+        
+        try {
+            await addToUserHistory(code);
+        } catch(e) {}
     }
 
     let handleCopy = () => {
@@ -98,9 +107,12 @@ function HomeComponent() {
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', backgroundColor: '#f0f0f0', padding: '5px 10px', borderRadius: '5px' }}>
                                     <p style={{ margin: 0, fontWeight: 'bold' }}>{scheduledLink}</p>
                                     <Button onClick={handleCopy} size="small" variant="contained" color="success">Copy Link</Button>
-                                    <Button size="small" variant="text" onClick={() => {
-                                        addToUserHistory(scheduledLink.split('/').pop());
-                                        navigate(`/${scheduledLink.split('/').pop()}`);
+                                    <Button size="small" variant="text" onClick={async () => {
+                                        let code = scheduledLink.split('/').pop();
+                                        try {
+                                            await addToUserHistory(code);
+                                        } catch (e) {}
+                                        navigate(`/${code}`);
                                     }}>Start Now</Button>
                                 </div>
                             )}

@@ -11,6 +11,7 @@ import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import Typography from '@mui/material/Typography';
+import CircularProgress from '@mui/material/CircularProgress';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import { AuthContext } from '../contexts/AuthContext';
 import { toast } from 'react-toastify';
@@ -29,6 +30,7 @@ export default function Authentication() {
     const [password, setPassword] = React.useState();
     const [name, setName] = React.useState();
     const [error, setError] = React.useState();
+    const [loading, setLoading] = React.useState(false);
 
 
     const [formState, setFormState] = React.useState(0);
@@ -37,6 +39,7 @@ export default function Authentication() {
     const { handleRegister, handleLogin } = React.useContext(AuthContext);
 
     let handleAuth = async () => {
+        setLoading(true);
         try {
             if (formState === 0) {
                 await handleLogin(username, password)
@@ -55,6 +58,8 @@ export default function Authentication() {
             console.log(err);
             let message = (err.response && err.response.data && err.response.data.message) || "Something went wrong. Is the server running?";
             setError(message);
+        } finally {
+            setLoading(false);
         }
     }
 
@@ -149,8 +154,9 @@ export default function Authentication() {
                                 variant="contained"
                                 sx={{ mt: 3, mb: 2 }}
                                 onClick={handleAuth}
+                                disabled={loading}
                             >
-                                {formState === 0 ? "Login " : "Register"}
+                                {loading ? <CircularProgress size={24} color="inherit" /> : (formState === 0 ? "Login" : "Register")}
                             </Button>
 
                         </Box>

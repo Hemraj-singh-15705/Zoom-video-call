@@ -46,7 +46,7 @@ export default function VideoMeetComponent() {
 
     let [screen, setScreen] = useState();
 
-    let [showModal, setModal] = useState(true);
+    let [showModal, setModal] = useState(false);
 
     let [screenAvailable, setScreenAvailable] = useState();
 
@@ -54,11 +54,12 @@ export default function VideoMeetComponent() {
 
     let [message, setMessage] = useState("");
 
-    let [newMessages, setNewMessages] = useState(3);
+    let [newMessages, setNewMessages] = useState(0);
 
     let [askForUsername, setAskForUsername] = useState(true);
 
     let [username, setUsername] = useState("");
+    let [isHost, setIsHost] = useState(false);
 
     const videoRef = useRef([])
 
@@ -79,6 +80,15 @@ export default function VideoMeetComponent() {
     useEffect(() => {
         console.log("HELLO")
         getPermissions();
+        
+        try {
+            const pathParts = window.location.href.split("/");
+            const currentCode = pathParts[pathParts.length - 1];
+            let owned = JSON.parse(localStorage.getItem('ownedMeetings') || '[]');
+            if (owned.includes(currentCode)) {
+                setIsHost(true);
+            }
+        } catch(e) {}
 
     }, [])
 
@@ -137,8 +147,23 @@ export default function VideoMeetComponent() {
     let getMedia = () => {
         setVideo(videoAvailable);
         setAudio(audioAvailable);
-        connectToSocketServer();
-        getUserMedia(videoAvailable, audioAvailable);
+        
+        if (!window.localStream) {
+            navigator.mediaDevices.getUserMedia({ video: videoAvailable, audio: audioAvailable })
+                .then((stream) => {
+                    window.localStream = stream;
+                    if (localVideoref.current) localVideoref.current.srcObject = stream;
+                    connectToSocketServer();
+                })
+                .catch((e) => {
+                    let blackSilence = (...args) => new MediaStream([black(...args), silence()]);
+                    window.localStream = blackSilence();
+                    if (localVideoref.current) localVideoref.current.srcObject = window.localStream;
+                    connectToSocketServer();
+                });
+        } else {
+            connectToSocketServer();
+        }
     }
 
 
@@ -150,21 +175,20 @@ export default function VideoMeetComponent() {
         } catch (e) { console.log(e) }
 
         window.localStream = stream
-        localVideoref.current.srcObject = stream
+        if (localVideoref.current) localVideoref.current.srcObject = stream
 
         for (let id in connectionsRef.current) {
             if (id === socketIdRef.current) continue
 
-            window.localStream.getTracks().forEach(track => connectionsRef.current[id].addTrack(track, window.localStream))
-
-            connectionsRef.current[id].createOffer().then((description) => {
-                console.log(description)
-                connectionsRef.current[id].setLocalDescription(description)
-                    .then(() => {
-                        socketRef.current.emit('signal', id, JSON.stringify({ 'sdp': connectionsRef.current[id].localDescription }))
-                    })
-                    .catch(e => console.log(e))
-            })
+            let senders = connectionsRef.current[id].getSenders();
+            window.localStream.getTracks().forEach(track => {
+                let sender = senders.find(s => s.track && s.track.kind === track.kind);
+                if (sender) {
+                    sender.replaceTrack(track);
+                } else {
+                    connectionsRef.current[id].addTrack(track, window.localStream);
+                }
+            });
         }
 
         stream.getTracks().forEach(track => track.onended = () => {
@@ -224,15 +248,15 @@ export default function VideoMeetComponent() {
         for (let id in connectionsRef.current) {
             if (id === socketIdRef.current) continue
 
-            window.localStream.getTracks().forEach(track => connectionsRef.current[id].addTrack(track, window.localStream))
-
-            connectionsRef.current[id].createOffer().then((description) => {
-                connectionsRef.current[id].setLocalDescription(description)
-                    .then(() => {
-                        socketRef.current.emit('signal', id, JSON.stringify({ 'sdp': connectionsRef.current[id].localDescription }))
-                    })
-                    .catch(e => console.log(e))
-            })
+            let senders = connectionsRef.current[id].getSenders();
+            window.localStream.getTracks().forEach(track => {
+                let sender = senders.find(s => s.track && s.track.kind === track.kind);
+                if (sender) {
+                    sender.replaceTrack(track);
+                } else {
+                    connectionsRef.current[id].addTrack(track, window.localStream);
+                }
+            });
         }
 
         stream.getTracks().forEach(track => track.onended = () => {
@@ -586,8 +610,9 @@ export default function VideoMeetComponent() {
 
 
     let sendMessage = () => {
+        if (message.trim().length === 0) return;
         console.log(socketRef.current);
-        socketRef.current.emit('chat-message', message, username)
+        socketRef.current.emit('chat-message', message, username);
         setMessage("");
 
         // this.setState({ message: "", sender: username })
@@ -704,9 +729,11 @@ export default function VideoMeetComponent() {
                             <IconButton onClick={handleEndCall} style={{ color: "red" }} title="Leave Meeting">
                                 <CallEndIcon />
                             </IconButton>
-                            <IconButton onClick={handleEndForAll} style={{ color: "red", backgroundColor: "rgba(255,0,0,0.1)", marginLeft: "5px" }} title="End Meeting for All">
-                                <CancelPresentationIcon />
-                            </IconButton>
+                            {isHost && (
+                                <IconButton onClick={handleEndForAll} style={{ color: "red", backgroundColor: "rgba(255,0,0,0.1)", marginLeft: "5px" }} title="End Meeting for All">
+                                    <CancelPresentationIcon />
+                                </IconButton>
+                            )}
                             <IconButton onClick={handleAudio} style={{ color: "white" }}>
                                 {audio === true ? <MicIcon /> : <MicOffIcon />}
                             </IconButton>
@@ -747,11 +774,16 @@ export default function VideoMeetComponent() {
                                         {participant.isLocal ? (
                                             video ? (
                                                 <video
-                                                    ref={localVideoref}
                                                     autoPlay
                                                     muted
                                                     playsInline
                                                     style={{ transform: "scaleX(-1)" }}
+                                                    ref={ref => {
+                                                        localVideoref.current = ref;
+                                                        if (ref && window.localStream && ref.srcObject !== window.localStream) {
+                                                            ref.srcObject = window.localStream;
+                                                        }
+                                                    }}
                                                 ></video>
                                             ) : (
                                                 <div className={styles.videoPlaceholder}>Camera Off</div>

@@ -54,7 +54,7 @@ export default function History() {
             </IconButton >
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "20px", marginTop: "20px" }}>
                 {
-                    (meetings.length !== 0) ? meetings.map((e, i) => {
+                    (meetings && meetings.length > 0) ? meetings.map((e, i) => {
                         return (
                             <Card key={i} variant="outlined" sx={{ borderRadius: "12px", boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}>
                                 <CardContent>
