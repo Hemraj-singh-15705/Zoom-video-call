@@ -353,6 +353,13 @@ export default function VideoMeetComponent() {
                 }, 2000);
             });
 
+            socketRef.current.on('meeting-expired', () => {
+                toast.error("This meeting link has expired.");
+                setTimeout(() => {
+                    handleEndCall();
+                }, 2000);
+            });
+
             socketRef.current.on('user-joined', (id, participants) => {
                 const joinedUser = participants.find(p => p.id === id);
                 if (joinedUser && id !== socketIdRef.current) {

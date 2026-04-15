@@ -4,6 +4,7 @@ import { Server } from "socket.io"
 let connections = {}
 let messages = {}
 let timeOnline = {}
+let expiredMeetings = new Set()
 
 export const connectToSocket = (server) => {
     const io = new Server(server, {
@@ -21,6 +22,11 @@ export const connectToSocket = (server) => {
         console.log("SOMETHING CONNECTED")
 
         socket.on("join-call", (path, username) => {
+
+            if (expiredMeetings.has(path)) {
+                io.to(socket.id).emit("meeting-expired");
+                return;
+            }
 
             if (connections[path] === undefined) {
                 connections[path] = []
@@ -122,6 +128,7 @@ export const connectToSocket = (server) => {
             }, ['', false]);
 
             if (found === true) {
+                expiredMeetings.add(matchingRoom);
                 connections[matchingRoom].forEach((elem) => {
                     io.to(elem).emit("meeting-ended")
                 })
