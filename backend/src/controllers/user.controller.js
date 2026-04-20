@@ -15,7 +15,13 @@ const login = async (req, res) => {
     username = username.trim().toLowerCase();
 
     try {
-        const user = await User.findOne({ username });
+        const user = await User.findOne({
+            $or: [
+                { username: username },
+                { email: username },
+                { mobile: username }
+            ]
+        });
         if (!user) {
             return res.status(httpStatus.NOT_FOUND).json({ message: "User Not Found" })
         }
@@ -40,7 +46,9 @@ const login = async (req, res) => {
                 token: token,
                 user: {
                     username: user.username,
-                    name: user.name
+                    name: user.name,
+                    email: user.email,
+                    mobile: user.mobile
                 }
             })
         } else {
@@ -54,14 +62,28 @@ const login = async (req, res) => {
 
 
 const register = async (req, res) => {
-    let { name, username, password } = req.body;
+    let { name, username, password, email, mobile } = req.body;
 
 
     try {
         username = username.trim().toLowerCase();
-        const existingUser = await User.findOne({ username });
+        email = email.trim().toLowerCase();
+
+        const existingUser = await User.findOne({
+            $or: [
+                { username: username },
+                { email: email },
+                { mobile: mobile }
+            ]
+        });
+
         if (existingUser) {
-            return res.status(httpStatus.FOUND).json({ message: "User already exists" });
+            let conflictField = "";
+            if (existingUser.username === username) conflictField = "Username";
+            else if (existingUser.email === email) conflictField = "Email";
+            else if (existingUser.mobile === mobile) conflictField = "Mobile number";
+
+            return res.status(httpStatus.FOUND).json({ message: `${conflictField} already exists` });
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
@@ -69,7 +91,9 @@ const register = async (req, res) => {
         const newUser = new User({
             name: name,
             username: username,
-            password: hashedPassword
+            password: hashedPassword,
+            email: email,
+            mobile: mobile
         });
 
         await newUser.save();

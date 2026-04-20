@@ -83,6 +83,8 @@ export default function Authentication() {
     const [username, setUsername] = React.useState("");
     const [password, setPassword] = React.useState("");
     const [name, setName] = React.useState("");
+    const [email, setEmail] = React.useState("");
+    const [mobile, setMobile] = React.useState("");
     const [error, setError] = React.useState("");
     const [loading, setLoading] = React.useState(false);
     const [formState, setFormState] = React.useState(0);
@@ -97,9 +99,12 @@ export default function Authentication() {
                 toast.success("Login Successful!")
             }
             if (formState === 1) {
-                let result = await handleRegister(name, username, password);
+                let result = await handleRegister(name, username, password, email, mobile);
                 console.log(result);
                 setUsername("");
+                setEmail("");
+                setMobile("");
+                setName("");
                 toast.success(result || "Registered Successfully!")
                 setError("")
                 setFormState(0)
@@ -201,7 +206,8 @@ export default function Authentication() {
 
                         <Box component="form" noValidate sx={{ mt: 1, width: '100%' }}>
                             {formState === 1 && (
-                                <TextField
+                                <>
+                                    <TextField
                                     margin="normal"
                                     required
                                     fullWidth
@@ -213,14 +219,37 @@ export default function Authentication() {
                                     placeholder="John Doe"
                                     autoFocus
                                 />
-                            )}
+                                <TextField
+                                    margin="normal"
+                                    required
+                                    fullWidth
+                                    id="email"
+                                    label="Email Address"
+                                    name="email"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    placeholder="john@example.com"
+                                />
+                                <TextField
+                                    margin="normal"
+                                    required
+                                    fullWidth
+                                    id="mobile"
+                                    label="Mobile Number"
+                                    name="mobile"
+                                    value={mobile}
+                                    onChange={(e) => setMobile(e.target.value)}
+                                    placeholder="9876543210"
+                                />
+                            </>
+                        )}
 
                             <TextField
                                 margin="normal"
                                 required
                                 fullWidth
                                 id="username"
-                                label="Username"
+                                label={formState === 0 ? "Email, Phone or Username" : "Username"}
                                 name="username"
                                 value={username}
                                 onChange={(e) => setUsername(e.target.value)}

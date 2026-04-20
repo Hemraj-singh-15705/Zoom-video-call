@@ -40,12 +40,14 @@ export const AuthProvider = ({ children }) => {
         checkAuth();
     }, []);
 
-    const handleRegister = async (name, username, password) => {
+    const handleRegister = async (name, username, password, email, mobile) => {
         try {
             let request = await client.post("/register", {
                 name: name,
                 username: username,
-                password: password
+                password: password,
+                email: email,
+                mobile: mobile
             })
 
 
