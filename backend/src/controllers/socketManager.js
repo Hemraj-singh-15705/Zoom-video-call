@@ -1,4 +1,5 @@
 import { Server } from "socket.io"
+import { ExpiredMeeting } from "../models/expiredMeeting.model.js"
 
 
 let connections = {}
@@ -21,11 +22,22 @@ export const connectToSocket = (server) => {
 
         console.log("SOMETHING CONNECTED")
 
-        socket.on("join-call", (path, username) => {
+        socket.on("join-call", async (path, username) => {
 
             if (expiredMeetings.has(path)) {
                 io.to(socket.id).emit("meeting-expired");
                 return;
+            }
+            
+            try {
+                const expiredMeetingRecord = await ExpiredMeeting.findOne({ meetingCode: path });
+                if (expiredMeetingRecord) {
+                    expiredMeetings.add(path); // cache in memory
+                    io.to(socket.id).emit("meeting-expired");
+                    return;
+                }
+            } catch (err) {
+                console.log("Error checking expired meeting:", err);
             }
 
             if (connections[path] === undefined) {
@@ -121,7 +133,7 @@ export const connectToSocket = (server) => {
             }
         })
 
-        socket.on("end-meeting", () => {
+        socket.on("end-meeting", async () => {
             const [matchingRoom, found] = Object.entries(connections).reduce(([room, isFound], [roomKey, roomValue]) => {
                 if (!isFound && roomValue.includes(socket.id)) return [roomKey, true];
                 return [room, isFound];
@@ -129,6 +141,17 @@ export const connectToSocket = (server) => {
 
             if (found === true) {
                 expiredMeetings.add(matchingRoom);
+                
+                try {
+                    const existingRecord = await ExpiredMeeting.findOne({ meetingCode: matchingRoom });
+                    if (!existingRecord) {
+                        const newExpired = new ExpiredMeeting({ meetingCode: matchingRoom });
+                        await newExpired.save();
+                    }
+                } catch (err) {
+                    console.log("Error saving expired meeting:", err);
+                }
+
                 connections[matchingRoom].forEach((elem) => {
                     io.to(elem).emit("meeting-ended")
                 })

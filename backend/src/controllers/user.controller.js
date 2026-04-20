@@ -6,11 +6,13 @@ import crypto from "crypto"
 import { Meeting } from "../models/meeting.model.js";
 const login = async (req, res) => {
 
-    const { username, password } = req.body;
+    let { username, password } = req.body;
 
     if (!username || !password) {
         return res.status(400).json({ message: "Please Provide" })
     }
+
+    username = username.trim().toLowerCase();
 
     try {
         const user = await User.findOne({ username });
@@ -52,10 +54,11 @@ const login = async (req, res) => {
 
 
 const register = async (req, res) => {
-    const { name, username, password } = req.body;
+    let { name, username, password } = req.body;
 
 
     try {
+        username = username.trim().toLowerCase();
         const existingUser = await User.findOne({ username });
         if (existingUser) {
             return res.status(httpStatus.FOUND).json({ message: "User already exists" });

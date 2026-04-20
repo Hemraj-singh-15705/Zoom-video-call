@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import io from "socket.io-client";
-import { Badge, IconButton, TextField } from '@mui/material';
+import { Badge, IconButton, TextField, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
 import { Button } from '@mui/material';
 import VideocamIcon from '@mui/icons-material/Videocam';
 import VideocamOffIcon from '@mui/icons-material/VideocamOff'
@@ -15,6 +15,7 @@ import PanToolIcon from '@mui/icons-material/PanTool';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
 import CancelPresentationIcon from '@mui/icons-material/CancelPresentation';
 import PictureInPictureAltIcon from '@mui/icons-material/PictureInPictureAlt';
+import CloseIcon from '@mui/icons-material/Close';
 import server from '../environment';
 import { toast } from 'react-toastify';
 
@@ -24,7 +25,23 @@ const server_url = server;
 
 const peerConfigConnections = {
     "iceServers": [
-        { "urls": "stun:stun.l.google.com:19302" }
+        { "urls": "stun:stun.l.google.com:19302" },
+        { "urls": "stun:stun1.l.google.com:19302" },
+        { 
+            "urls": "turn:openrelay.metered.ca:80",
+            "username": "openrelayproject",
+            "credential": "openrelayproject"
+        },
+        { 
+            "urls": "turn:openrelay.metered.ca:443",
+            "username": "openrelayproject",
+            "credential": "openrelayproject"
+        },
+        { 
+            "urls": "turn:openrelay.metered.ca:443?transport=tcp",
+            "username": "openrelayproject",
+            "credential": "openrelayproject"
+        }
     ]
 }
 
@@ -105,22 +122,18 @@ export default function VideoMeetComponent() {
 
     const getPermissions = async () => {
         try {
-            const videoPermission = await navigator.mediaDevices.getUserMedia({ video: true });
-            if (videoPermission) {
+            const videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
+            if (videoStream) {
                 setVideoAvailable(true);
+                videoStream.getTracks().forEach(track => track.stop());
                 console.log('Video permission granted');
-            } else {
-                setVideoAvailable(false);
-                console.log('Video permission denied');
             }
 
-            const audioPermission = await navigator.mediaDevices.getUserMedia({ audio: true });
-            if (audioPermission) {
+            const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            if (audioStream) {
                 setAudioAvailable(true);
+                audioStream.getTracks().forEach(track => track.stop());
                 console.log('Audio permission granted');
-            } else {
-                setAudioAvailable(false);
-                console.log('Audio permission denied');
             }
 
             if (navigator.mediaDevices.getDisplayMedia) {
@@ -384,6 +397,10 @@ export default function VideoMeetComponent() {
                     // Wait for their video stream
                     connectionsRef.current[socketListId].ontrack = (event) => {
                         let stream = event.streams[0];
+
+                        if (!stream) {
+                            stream = new MediaStream([event.track]);
+                        }
 
                         setVideos(prevVideos => {
                             let videoExists = prevVideos.find(video => video.socketId === socketListId);
@@ -669,64 +686,74 @@ export default function VideoMeetComponent() {
                 <div className={styles.meetVideoContainer}>
 
                     <div className={styles.blurWrapper}>
-                        <div className={styles.sidePanelContainer}>
-                            {showModal && (
-                                <div className={styles.chatRoom}>
-                                    <h1>Chat</h1>
-                                    <div className={styles.chattingDisplay}>
-                                        {messages.length !== 0 ? messages.map((item, index) => (
-                                            <div style={{ marginBottom: "20px" }} key={index}>
-                                                <p style={{ fontWeight: "bold", color: "#ff4d4d" }}>{item.sender}</p>
-                                                {typeof item.data === 'string' ? (
-                                                    <p style={{ color: "white" }}>{item.data}</p>
-                                                ) : item.data.type === 'file' ? (
-                                                    item.data.fileType.startsWith('image/') ? 
-                                                    <img src={item.data.content} alt="attachment" style={{maxWidth: '100%', borderRadius: '5px', marginTop: '5px'}}/>
-                                                    : <a href={item.data.content} download={item.data.fileName} style={{color: '#ff4d4d', textDecoration: 'underline'}}>Download {item.data.fileName}</a>
-                                                ) : (
-                                                    <p style={{ color: "white" }}>{item.data.content}</p>
-                                                )}
-                                            </div>
-                                        )) : <p style={{ color: "rgba(255,255,255,0.5)" }}>No Messages Yet</p>}
-                                        <div ref={chatEndRef} />
-                                    </div>
-                                    <div className={styles.chattingArea}>
-                                        <input
-                                            accept="image/*,.pdf,.txt"
-                                            style={{ display: 'none' }}
-                                            id="raised-button-file"
-                                            type="file"
-                                            onChange={handleFileUpload}
-                                        />
-                                        <label htmlFor="raised-button-file">
-                                            <IconButton component="span" style={{ color: "white", marginRight: "10px" }}>
-                                                <AttachFileIcon />
-                                            </IconButton>
-                                        </label>
-                                        <TextField
-                                            fullWidth
-                                            value={message}
-                                            onChange={(e) => setMessage(e.target.value)}
-                                            id="outlined-basic"
-                                            label="Enter Your chat"
-                                            variant="outlined"
-                                            InputLabelProps={{ style: { color: 'rgba(255,255,255,0.7)' } }}
-                                            InputProps={{ style: { color: 'white' } }}
-                                            sx={{
-                                                '& .MuiOutlinedInput-root': {
-                                                    '& fieldset': { borderColor: 'rgba(255,255,255,0.3)' },
-                                                    '&:hover fieldset': { borderColor: 'rgba(255,255,255,0.5)' },
-                                                    '&.Mui-focused fieldset': { borderColor: '#ff4d4d' },
-                                                },
-                                                '& .MuiInputLabel-root.Mui-focused': { color: '#ff4d4d' }
-                                            }}
-                                        />
-                                        <Button variant='contained' onClick={sendMessage} style={{ backgroundColor: "#ff4d4d" }}>Send</Button>
-                                    </div>
+                        <Dialog open={showModal} onClose={closeChat} fullWidth maxWidth="sm" PaperProps={{ style: { backgroundColor: '#1a1c1e', color: 'white', borderRadius: '16px' } }}>
+                            <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                                Chat
+                                <IconButton onClick={closeChat} sx={{ color: 'white' }}>
+                                    <CloseIcon />
+                                </IconButton>
+                            </DialogTitle>
+                            <DialogContent sx={{ display: 'flex', flexDirection: 'column', height: { xs: '70vh', sm: '60vh' }, padding: '24px' }}>
+                                <div className={styles.chattingDisplay} style={{ flexGrow: 1 }}>
+                                    {messages.length !== 0 ? messages.map((item, index) => (
+                                        <div style={{ marginBottom: "20px" }} key={index}>
+                                            <p style={{ fontWeight: "bold", color: "#ff4d4d", margin: "0 0 5px 0" }}>{item.sender}</p>
+                                            {typeof item.data === 'string' ? (
+                                                <p style={{ color: "white", margin: 0, wordWrap: "break-word" }}>{item.data}</p>
+                                            ) : item.data.type === 'file' ? (
+                                                item.data.fileType.startsWith('image/') ? 
+                                                <img src={item.data.content} alt="attachment" style={{maxWidth: '100%', borderRadius: '5px', marginTop: '5px'}}/>
+                                                : <a href={item.data.content} download={item.data.fileName} style={{color: '#ff4d4d', textDecoration: 'underline'}}>Download {item.data.fileName}</a>
+                                            ) : (
+                                                <p style={{ color: "white", margin: 0, wordWrap: "break-word" }}>{item.data.content}</p>
+                                            )}
+                                        </div>
+                                    )) : <p style={{ color: "rgba(255,255,255,0.5)", textAlign: "center", marginTop: "20px" }}>No Messages Yet</p>}
+                                    <div ref={chatEndRef} />
                                 </div>
-                            )}
-
-                        </div>
+                            </DialogContent>
+                            <DialogActions sx={{ padding: '15px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+                                <div className={styles.chattingArea} style={{ width: '100%', borderTop: 'none', padding: 0 }}>
+                                    <input
+                                        accept="image/*,.pdf,.txt"
+                                        style={{ display: 'none' }}
+                                        id="raised-button-file"
+                                        type="file"
+                                        onChange={handleFileUpload}
+                                    />
+                                    <label htmlFor="raised-button-file">
+                                        <IconButton component="span" style={{ color: "white", marginRight: "10px" }}>
+                                            <AttachFileIcon />
+                                        </IconButton>
+                                    </label>
+                                    <TextField
+                                        fullWidth
+                                        value={message}
+                                        onChange={(e) => setMessage(e.target.value)}
+                                        onKeyPress={(e) => {
+                                            if (e.key === 'Enter') {
+                                                sendMessage();
+                                            }
+                                        }}
+                                        id="outlined-basic"
+                                        label="Enter Your chat"
+                                        variant="outlined"
+                                        size="small"
+                                        InputLabelProps={{ style: { color: 'rgba(255,255,255,0.7)' } }}
+                                        InputProps={{ style: { color: 'white' } }}
+                                        sx={{
+                                            '& .MuiOutlinedInput-root': {
+                                                '& fieldset': { borderColor: 'rgba(255,255,255,0.3)' },
+                                                '&:hover fieldset': { borderColor: 'rgba(255,255,255,0.5)' },
+                                                '&.Mui-focused fieldset': { borderColor: '#ff4d4d' },
+                                            },
+                                            '& .MuiInputLabel-root.Mui-focused': { color: '#ff4d4d' }
+                                        }}
+                                    />
+                                    <Button variant='contained' onClick={sendMessage} style={{ backgroundColor: "#ff4d4d", marginLeft: '10px' }}>Send</Button>
+                                </div>
+                            </DialogActions>
+                        </Dialog>
 
 
                         <div className={styles.buttonContainers}>
