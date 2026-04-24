@@ -39,7 +39,11 @@ function HomeComponent() {
 
     const { addToUserHistory } = useContext(AuthContext);
     let handleJoinVideoCall = async () => {
-        await addToUserHistory(meetingCode)
+        try {
+            await addToUserHistory(meetingCode)
+        } catch (e) {
+            console.log("Failed to add to history:", e);
+        }
         navigate(`/${meetingCode}`)
     }
 

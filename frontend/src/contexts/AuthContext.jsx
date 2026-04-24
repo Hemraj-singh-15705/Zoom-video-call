@@ -12,6 +12,20 @@ const client = axios.create({
     withCredentials: true
 });
 
+// Add a request interceptor to attach the token to every request
+client.interceptors.request.use(
+    (config) => {
+        const token = localStorage.getItem("token");
+        if (token) {
+            config.headers.Authorization = `Bearer ${token}`;
+        }
+        return config;
+    },
+    (error) => {
+        return Promise.reject(error);
+    }
+);
+
 console.log("Axios Client Initialized with BaseURL:", `${server}/api/v1/users`);
 
 

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import io from "socket.io-client";
-import { Badge, IconButton, TextField, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
+import { Badge, IconButton, TextField, Dialog, DialogTitle, DialogContent, DialogActions, Select, MenuItem, FormControl, InputLabel } from '@mui/material';
 import { Button } from '@mui/material';
 import VideocamIcon from '@mui/icons-material/Videocam';
 import VideocamOffIcon from '@mui/icons-material/VideocamOff'
@@ -16,6 +16,12 @@ import AttachFileIcon from '@mui/icons-material/AttachFile';
 import CancelPresentationIcon from '@mui/icons-material/CancelPresentation';
 import PictureInPictureAltIcon from '@mui/icons-material/PictureInPictureAlt';
 import CloseIcon from '@mui/icons-material/Close';
+import EmojiEmotionsIcon from '@mui/icons-material/EmojiEmotions';
+import VolumeOffIcon from '@mui/icons-material/VolumeOff';
+import PersonRemoveIcon from '@mui/icons-material/PersonRemove';
+import SubtitlesIcon from '@mui/icons-material/Subtitles';
+import SubtitlesOffIcon from '@mui/icons-material/SubtitlesOff';
+import PeopleIcon from '@mui/icons-material/People';
 import server from '../environment';
 import { toast } from 'react-toastify';
 
@@ -50,6 +56,7 @@ export default function VideoMeetComponent() {
     var socketRef = useRef();
     let socketIdRef = useRef();
     let connectionsRef = useRef({});
+    let recognitionRef = useRef(null);
 
     let localVideoref = useRef();
 
@@ -64,6 +71,7 @@ export default function VideoMeetComponent() {
     let [screen, setScreen] = useState();
 
     let [showModal, setModal] = useState(false);
+    let [showParticipantsPanel, setShowParticipantsPanel] = useState(false);
 
     let [screenAvailable, setScreenAvailable] = useState();
 
@@ -85,6 +93,15 @@ export default function VideoMeetComponent() {
     let [raisedHands, setRaisedHands] = useState([]);
     const [page, setPage] = useState(0);
     const USERS_PER_PAGE = 9;
+
+    let [devices, setDevices] = useState([]);
+    let [selectedCamera, setSelectedCamera] = useState('');
+    let [selectedMic, setSelectedMic] = useState('');
+    let [activeEmojis, setActiveEmojis] = useState([]);
+    let [showEmojiPicker, setShowEmojiPicker] = useState(false);
+
+    let [isCaptionsOn, setIsCaptionsOn] = useState(false);
+    let [currentCaption, setCurrentCaption] = useState(null);
 
     const chatEndRef = useRef(null);
 
@@ -122,6 +139,13 @@ export default function VideoMeetComponent() {
 
     const getPermissions = async () => {
         try {
+            const devs = await navigator.mediaDevices.enumerateDevices();
+            setDevices(devs);
+            const videoDevices = devs.filter(d => d.kind === 'videoinput');
+            const audioDevices = devs.filter(d => d.kind === 'audioinput');
+            if (videoDevices.length > 0) setSelectedCamera(videoDevices[0].deviceId);
+            if (audioDevices.length > 0) setSelectedMic(audioDevices[0].deviceId);
+
             const videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
             if (videoStream) {
                 setVideoAvailable(true);
@@ -157,12 +181,40 @@ export default function VideoMeetComponent() {
     };
 
 
+    const changeDevice = async (type, deviceId) => {
+        if (type === 'videoinput') setSelectedCamera(deviceId);
+        else setSelectedMic(deviceId);
+
+        if (localVideoref.current) {
+            const currentVideo = type === 'videoinput' ? deviceId : selectedCamera;
+            const currentAudio = type === 'audioinput' ? deviceId : selectedMic;
+            
+            const constraints = {
+                video: videoAvailable ? (currentVideo ? { deviceId: { exact: currentVideo } } : true) : false,
+                audio: audioAvailable ? (currentAudio ? { deviceId: { exact: currentAudio } } : true) : false
+            };
+            
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                window.localStream = stream;
+                localVideoref.current.srcObject = stream;
+            } catch (e) {
+                console.error("Error changing device", e);
+            }
+        }
+    };
+
     let getMedia = () => {
         setVideo(videoAvailable);
         setAudio(audioAvailable);
         
+        const constraints = {
+            video: videoAvailable ? (selectedCamera ? { deviceId: { exact: selectedCamera } } : true) : false,
+            audio: audioAvailable ? (selectedMic ? { deviceId: { exact: selectedMic } } : true) : false
+        };
+
         if (!window.localStream) {
-            navigator.mediaDevices.getUserMedia({ video: videoAvailable, audio: audioAvailable })
+            navigator.mediaDevices.getUserMedia(constraints)
                 .then((stream) => {
                     window.localStream = stream;
                     if (localVideoref.current) localVideoref.current.srcObject = stream;
@@ -357,6 +409,40 @@ export default function VideoMeetComponent() {
                 setTimeout(() => {
                     setRaisedHands(prev => prev.filter(userId => userId !== id));
                 }, 5000);
+            });
+
+            socketRef.current.on('kicked', () => {
+                toast.error("You have been kicked from the meeting by the host.");
+                setTimeout(() => {
+                    handleEndCall();
+                }, 2000);
+            });
+
+            socketRef.current.on('mute-all-participants', () => {
+                setAudio(false);
+                if (window.localStream) {
+                    window.localStream.getAudioTracks().forEach(track => {
+                        track.stop();
+                    });
+                }
+                toast.info("The host has muted everyone.");
+            });
+
+            socketRef.current.on('emoji-received', (id, emoji) => {
+                const newEmoji = { id: Date.now(), emoji, socketId: id };
+                setActiveEmojis(prev => [...prev, newEmoji]);
+                setTimeout(() => {
+                    setActiveEmojis(prev => prev.filter(e => e.id !== newEmoji.id));
+                }, 4000);
+            });
+
+            socketRef.current.on('caption-received', (captionData) => {
+                if (captionData.senderId !== socketIdRef.current) {
+                    setCurrentCaption(captionData);
+                    setTimeout(() => {
+                        setCurrentCaption(null);
+                    }, 4000);
+                }
             });
 
             socketRef.current.on('meeting-ended', () => {
@@ -579,6 +665,80 @@ export default function VideoMeetComponent() {
         handleEndCall();
     }
     
+    let handleMuteAll = () => {
+        if (isHost) {
+            socketRef.current.emit('mute-all-participants');
+            toast.success("Muted all participants.");
+        }
+    }
+
+    let handleKick = (participantId, e) => {
+        if (e) e.stopPropagation();
+        if (isHost) {
+            socketRef.current.emit('kick-participant', participantId);
+            toast.success("Kicked participant.");
+        }
+    }
+
+    let sendEmoji = (emoji) => {
+        socketRef.current.emit('send-emoji', emoji);
+        // Also show locally
+        const newEmoji = { id: Date.now(), emoji, socketId: socketIdRef.current };
+        setActiveEmojis(prev => [...prev, newEmoji]);
+        setTimeout(() => {
+            setActiveEmojis(prev => prev.filter(e => e.id !== newEmoji.id));
+        }, 4000);
+        setShowEmojiPicker(false);
+    }
+    
+    let toggleCaptions = () => {
+        if (isCaptionsOn) {
+            if (recognitionRef.current) {
+                recognitionRef.current.stop();
+            }
+            setIsCaptionsOn(false);
+            toast.info("Captions turned off.");
+        } else {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                toast.error("Your browser does not support Speech Recognition.");
+                return;
+            }
+            const recognition = new SpeechRecognition();
+            recognition.continuous = true;
+            recognition.interimResults = false;
+            recognition.lang = 'en-US';
+
+            recognition.onresult = (event) => {
+                const transcript = event.results[event.results.length - 1][0].transcript;
+                socketRef.current.emit('send-caption', { username: username || "You", text: transcript });
+                setCurrentCaption({ username: "You", text: transcript });
+                setTimeout(() => {
+                    setCurrentCaption(null);
+                }, 4000);
+            };
+
+            recognition.onerror = (event) => {
+                console.error("Speech recognition error", event.error);
+            };
+
+            recognition.onend = () => {
+                if (recognitionRef.current) {
+                    try { recognitionRef.current.start(); } catch(e){}
+                }
+            };
+
+            recognitionRef.current = recognition;
+            try {
+                recognition.start();
+                setIsCaptionsOn(true);
+                toast.success("Captions turned on.");
+            } catch(e) {
+                console.error("Failed to start recognition:", e);
+            }
+        }
+    }
+
     let togglePiP = async (e, id) => {
         e.stopPropagation();
         try {
@@ -675,10 +835,40 @@ export default function VideoMeetComponent() {
                                         '& fieldset': { borderColor: '#4a4d52' },
                                         '&:hover fieldset': { borderColor: '#b0b3b8' },
                                         '&.Mui-focused fieldset': { borderColor: '#1976d2' },
-                                    }
+                                    },
+                                    marginBottom: '15px'
                                 }}
                             />
-                            <Button variant="contained" onClick={connect} size="large">Connect</Button>
+                            
+                            <FormControl fullWidth sx={{ marginBottom: '15px' }}>
+                                <InputLabel style={{ color: '#b0b3b8' }}>Camera</InputLabel>
+                                <Select
+                                    value={selectedCamera}
+                                    onChange={(e) => changeDevice('videoinput', e.target.value)}
+                                    label="Camera"
+                                    sx={{ color: 'white', '.MuiOutlinedInput-notchedOutline': { borderColor: '#4a4d52' } }}
+                                >
+                                    {devices.filter(d => d.kind === 'videoinput').map((device) => (
+                                        <MenuItem key={device.deviceId} value={device.deviceId}>{device.label || `Camera ${device.deviceId.substring(0,5)}`}</MenuItem>
+                                    ))}
+                                </Select>
+                            </FormControl>
+
+                            <FormControl fullWidth sx={{ marginBottom: '20px' }}>
+                                <InputLabel style={{ color: '#b0b3b8' }}>Microphone</InputLabel>
+                                <Select
+                                    value={selectedMic}
+                                    onChange={(e) => changeDevice('audioinput', e.target.value)}
+                                    label="Microphone"
+                                    sx={{ color: 'white', '.MuiOutlinedInput-notchedOutline': { borderColor: '#4a4d52' } }}
+                                >
+                                    {devices.filter(d => d.kind === 'audioinput').map((device) => (
+                                        <MenuItem key={device.deviceId} value={device.deviceId}>{device.label || `Mic ${device.deviceId.substring(0,5)}`}</MenuItem>
+                                    ))}
+                                </Select>
+                            </FormControl>
+
+                            <Button variant="contained" onClick={connect} size="large" fullWidth>Connect</Button>
                         </div>
                     </div>
                 </div> :
@@ -786,6 +976,39 @@ export default function VideoMeetComponent() {
                                 </IconButton>
                             </Badge>
 
+                            {isHost && (
+                                <IconButton onClick={handleMuteAll} style={{ color: "orange", backgroundColor: "rgba(255,165,0,0.1)", marginLeft: "5px" }} title="Mute All Participants">
+                                    <VolumeOffIcon />
+                                </IconButton>
+                            )}
+
+                            <IconButton onClick={toggleCaptions} style={{ color: isCaptionsOn ? "#4caf50" : "white", marginLeft: "5px" }} title="Toggle Captions">
+                                {isCaptionsOn ? <SubtitlesIcon /> : <SubtitlesOffIcon />}
+                            </IconButton>
+
+                            <IconButton onClick={() => setShowParticipantsPanel(!showParticipantsPanel)} style={{ color: showParticipantsPanel ? "#1976d2" : "white", marginLeft: "5px" }} title="Participants">
+                                <PeopleIcon />
+                            </IconButton>
+
+                            <div style={{ position: 'relative' }}>
+                                <IconButton onClick={() => setShowEmojiPicker(!showEmojiPicker)} style={{ color: "white", marginLeft: "5px" }} title="Send Reaction">
+                                    <EmojiEmotionsIcon />
+                                </IconButton>
+                                {showEmojiPicker && (
+                                    <div style={{
+                                        position: 'absolute', bottom: '50px', left: '50%', transform: 'translateX(-50%)',
+                                        backgroundColor: 'rgba(26, 28, 30, 0.9)', padding: '10px', borderRadius: '10px',
+                                        display: 'flex', gap: '10px', zIndex: 100, border: '1px solid rgba(255,255,255,0.1)'
+                                    }}>
+                                        {['👍', '❤️', '😂', '👏', '🎉'].map(emoji => (
+                                            <span key={emoji} onClick={() => sendEmoji(emoji)} style={{ cursor: 'pointer', fontSize: '1.5rem', transition: 'transform 0.2s' }} onMouseEnter={e => e.target.style.transform='scale(1.2)'} onMouseLeave={e => e.target.style.transform='scale(1)'}>
+                                                {emoji}
+                                            </span>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
                         </div>
 
 
@@ -843,11 +1066,30 @@ export default function VideoMeetComponent() {
                                                 <PictureInPictureAltIcon fontSize="small" />
                                             </IconButton>
                                         )}
+                                        {!participant.isLocal && isHost && (
+                                            <IconButton
+                                                style={{ position: 'absolute', top: '10px', right: '50px', color: '#ff4d4d', backgroundColor: 'rgba(0,0,0,0.5)' }}
+                                                onClick={(e) => handleKick(participant.socketId, e)}
+                                                size="small"
+                                                title="Kick Participant"
+                                            >
+                                                <PersonRemoveIcon fontSize="small" />
+                                            </IconButton>
+                                        )}
                                         {raisedHands.includes(participant.socketId) && (
                                             <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', fontSize: '3rem', zIndex: 10 }}>
                                                 ✋
                                             </div>
                                         )}
+                                        {activeEmojis.filter(e => e.socketId === participant.socketId).map(emojiObj => (
+                                            <div key={emojiObj.id} style={{ 
+                                                position: 'absolute', bottom: '50px', left: '50%', transform: 'translateX(-50%)', 
+                                                fontSize: '4rem', zIndex: 20,
+                                                animation: 'floatUpAndFade 4s ease-out forwards'
+                                            }}>
+                                                {emojiObj.emoji}
+                                            </div>
+                                        ))}
                                         <div className={styles.participantName}>
                                             {participant.isLocal ? "You (Me)" : (participant.username || `${participant.socketId.substring(0, 5)}...`)}
                                         </div>
@@ -880,7 +1122,58 @@ export default function VideoMeetComponent() {
                             </div>
                         )}
 
+                        {currentCaption && (
+                            <div style={{
+                                position: 'absolute', bottom: '150px', left: '50%', transform: 'translateX(-50%)',
+                                backgroundColor: 'rgba(0,0,0,0.7)', color: 'white', padding: '10px 20px',
+                                borderRadius: '10px', fontSize: '1.2rem', zIndex: 500, textAlign: 'center',
+                                maxWidth: '80%', wordWrap: 'break-word', backdropFilter: 'blur(5px)',
+                                border: '1px solid rgba(255,255,255,0.1)'
+                            }}>
+                                <strong style={{ color: '#ff4d4d' }}>{currentCaption.username}:</strong> {currentCaption.text}
+                            </div>
+                        )}
+
                     </div>
+
+                    {showParticipantsPanel && (
+                        <div style={{
+                            position: 'absolute', top: 0, right: 0, width: '320px', height: '100vh',
+                            backgroundColor: '#1a1c1e', zIndex: 1100, borderLeft: '1px solid rgba(255,255,255,0.1)',
+                            display: 'flex', flexDirection: 'column', boxShadow: '-4px 0 20px rgba(0,0,0,0.5)',
+                            animation: 'slideIn 0.3s ease-out'
+                        }}>
+                            <div style={{ padding: '20px', borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <h3 style={{ margin: 0, color: 'white' }}>Participants ({videos.length + 1})</h3>
+                                <IconButton onClick={() => setShowParticipantsPanel(false)} style={{ color: 'white' }}>
+                                    <CloseIcon />
+                                </IconButton>
+                            </div>
+                            <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
+                                {[{ socketId: socketIdRef.current, username: username || "You", isLocal: true }, ...videos].map(p => (
+                                    <div key={p.socketId} style={{ 
+                                        display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
+                                        marginBottom: '15px', color: 'white', padding: '10px',
+                                        backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '8px'
+                                    }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                            <div style={{ width: '30px', height: '30px', borderRadius: '50%', backgroundColor: '#1976d2', display: 'flex', justifyContent: 'center', alignItems: 'center', fontWeight: 'bold' }}>
+                                                {(p.username || "?").charAt(0).toUpperCase()}
+                                            </div>
+                                            <span>{p.isLocal ? "You (Me)" : p.username}</span>
+                                        </div>
+                                        {!p.isLocal && isHost && (
+                                            <div style={{ display: 'flex', gap: '5px' }}>
+                                                <IconButton size="small" style={{ color: '#ff4d4d' }} onClick={() => handleKick(p.socketId)} title="Kick">
+                                                    <PersonRemoveIcon fontSize="small" />
+                                                </IconButton>
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
 
                 </div>
 

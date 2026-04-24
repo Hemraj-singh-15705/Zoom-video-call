@@ -161,6 +161,62 @@ export const connectToSocket = (server) => {
             }
         })
 
+        socket.on("mute-all-participants", () => {
+            const [matchingRoom, found] = Object.entries(connections).reduce(([room, isFound], [roomKey, roomValue]) => {
+                if (!isFound && roomValue.includes(socket.id)) return [roomKey, true];
+                return [room, isFound];
+            }, ['', false]);
+
+            if (found === true) {
+                connections[matchingRoom].forEach((elem) => {
+                    if (elem !== socket.id) {
+                        io.to(elem).emit("mute-all-participants");
+                    }
+                });
+            }
+        });
+
+        socket.on("kick-participant", (participantId) => {
+            const [matchingRoom, found] = Object.entries(connections).reduce(([room, isFound], [roomKey, roomValue]) => {
+                if (!isFound && roomValue.includes(socket.id)) return [roomKey, true];
+                return [room, isFound];
+            }, ['', false]);
+
+            if (found === true && connections[matchingRoom].includes(participantId)) {
+                io.to(participantId).emit("kicked");
+            }
+        });
+
+        socket.on("send-emoji", (emoji) => {
+            const [matchingRoom, found] = Object.entries(connections).reduce(([room, isFound], [roomKey, roomValue]) => {
+                if (!isFound && roomValue.includes(socket.id)) return [roomKey, true];
+                return [room, isFound];
+            }, ['', false]);
+
+            if (found === true) {
+                connections[matchingRoom].forEach((elem) => {
+                    io.to(elem).emit("emoji-received", socket.id, emoji);
+                });
+            }
+        });
+
+        socket.on("send-caption", (captionData) => {
+            const [matchingRoom, found] = Object.entries(connections).reduce(([room, isFound], [roomKey, roomValue]) => {
+                if (!isFound && roomValue.includes(socket.id)) return [roomKey, true];
+                return [room, isFound];
+            }, ['', false]);
+
+            if (found === true) {
+                connections[matchingRoom].forEach((elem) => {
+                    io.to(elem).emit("caption-received", {
+                        senderId: socket.id,
+                        username: captionData.username,
+                        text: captionData.text
+                    });
+                });
+            }
+        });
+
         socket.on("disconnect", () => {
 
             var diffTime = Math.abs(timeOnline[socket.id] - new Date())

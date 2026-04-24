@@ -2,7 +2,12 @@ import { User } from "../models/user.model.js";
 import httpStatus from "http-status";
 
 export const authMiddleware = async (req, res, next) => {
-    const token = req.cookies.token;
+    let token = req.cookies.token;
+
+    // Check for token in Authorization header if not found in cookies
+    if (!token && req.headers.authorization) {
+        token = req.headers.authorization.split(" ")[1]; // Format: "Bearer <token>"
+    }
 
     if (!token) {
         return res.status(httpStatus.UNAUTHORIZED).json({ message: "Unauthorized: No token provided" });

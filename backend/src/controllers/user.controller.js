@@ -37,8 +37,8 @@ const login = async (req, res) => {
 
             res.cookie("token", token, {
                 httpOnly: true,
-                secure: process.env.NODE_ENV === "production",
-                sameSite: "Lax",
+                secure: true, // Always true for SameSite: None, Render provides SSL
+                sameSite: "None", // Required for cross-site subdomains on Render
                 maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
             });
 
