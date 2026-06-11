@@ -113,6 +113,7 @@ export default function Authentication() {
         } catch (err) {
             console.log(err);
             let message = (err.response && err.response.data && err.response.data.message) || "Something went wrong. Is the server running?";
+            toast.error(message);
             setError(message);
         } finally {
             setLoading(false);

@@ -33,7 +33,7 @@ const login = async (req, res) => {
             let token = crypto.randomBytes(20).toString("hex");
 
             user.token = token;
-            await user.save();
+            await user.save({ validateBeforeSave: false });
 
             res.cookie("token", token, {
                 httpOnly: true,
@@ -72,8 +72,7 @@ const register = async (req, res) => {
         const existingUser = await User.findOne({
             $or: [
                 { username: username },
-                { email: email },
-                { mobile: mobile }
+                { email: email }
             ]
         });
 
@@ -81,7 +80,6 @@ const register = async (req, res) => {
             let conflictField = "";
             if (existingUser.username === username) conflictField = "Username";
             else if (existingUser.email === email) conflictField = "Email";
-            else if (existingUser.mobile === mobile) conflictField = "Mobile number";
 
             return res.status(httpStatus.FOUND).json({ message: `${conflictField} already exists` });
         }
